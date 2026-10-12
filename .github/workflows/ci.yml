@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly: catch new Jenkins and remoting releases early.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Jenkins ${{ matrix.jenkins }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        jenkins: [lts-jdk21, latest-jdk21]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Start controller
+        run: |
+          docker build -q -t controller --build-arg JENKINS_TAG=${{ matrix.jenkins }} -f test/Dockerfile.controller test
+          docker run -d --name controller --network host controller
+          for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
+          curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
+          echo "JENKINS_VERSION=$(curl -fsSI localhost:8080/login | sed -n 's/^X-Jenkins: *//Ip' | tr -d '\r')" >> "$GITHUB_ENV"
+
+      - name: Build agent8.jar from the controller's agent.jar
+        run: ./build.sh agent.jar
+
+      - name: Serialization test
+        run: test/serialization.sh
+
+      - name: Integration test (CentOS 6, Java 8)
+        run: test/it.sh
+
+      - name: Controller log
+        if: failure()
+        run: docker logs controller 2>&1 | tail -200
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent8-jenkins-${{ env.JENKINS_VERSION }}
+          path: dist/

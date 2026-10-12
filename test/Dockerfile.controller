@@ -1,0 +1,6 @@
+# Controller for the integration test: no security, Pipeline plugins only.
+ARG JENKINS_TAG=lts-jdk21
+FROM jenkins/jenkins:${JENKINS_TAG}
+ENV JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+RUN jenkins-plugin-cli --plugins \
+    workflow-job workflow-cps workflow-durable-task-step workflow-basic-steps pipeline-stage-step junit
