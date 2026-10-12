@@ -1,0 +1,14 @@
+Java 8 has no ClassLoader.getDefinedPackage. JvmDowngrader cannot stub the
+call because its receiver is a subclass (RemoteClassLoader), so patch it.
+
+--- a/src/main/java/hudson/remoting/RemoteClassLoader.java
++++ b/src/main/java/hudson/remoting/RemoteClassLoader.java
+@@ -490,7 +490,7 @@
+         }
+ 
+         String packageName = name.substring(0, idx);
+-        if (getDefinedPackage(packageName) != null) { // already defined
++        if (getPackage(packageName) != null) { // already defined
+             return;
+         }
+ 

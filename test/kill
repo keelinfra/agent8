@@ -1,0 +1,3 @@
+#!/bin/sh
+# The centos:6 image lacks util-linux; real RHEL 6 and AIX hosts have /bin/kill.
+kill "$@"
