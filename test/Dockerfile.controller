@@ -8,4 +8,10 @@ ARG PLUGINS="workflow-job workflow-cps workflow-durable-task-step workflow-basic
 ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
 # Inbound agent port: any free one, since the runner may already use 50000 (the agent finds it over HTTP).
 ENV JENKINS_SLAVE_AGENT_PORT=0
-RUN if [ -n "$PLUGINS" ]; then jenkins-plugin-cli --plugins $PLUGINS; fi
+# Bare controller: still needs the plugins split out of core that the war bundles, among them
+# instance-identity, without which inbound agents cannot connect (X-Instance-Identity).
+RUN if [ -n "$PLUGINS" ]; then jenkins-plugin-cli --plugins $PLUGINS; \
+    else cd /tmp && jar xf /usr/share/jenkins/jenkins.war WEB-INF/detached-plugins && \
+         mkdir -p /usr/share/jenkins/ref/plugins && \
+         for p in WEB-INF/detached-plugins/*.hpi; do n=${p##*/}; cp "$p" "/usr/share/jenkins/ref/plugins/${n%.hpi}.jpi"; done && \
+         ls /usr/share/jenkins/ref/plugins; fi
