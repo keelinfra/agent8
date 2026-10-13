@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Builds a Java 8 compatible Jenkins agent jar.
+# Builds Jenkins agent jars for hosts with an older Java than the controller needs.
 #
-#   ./build.sh <remoting version>     download remoting.jar from repo.jenkins-ci.org
-#   ./build.sh path/to/agent.jar      use a jar from <jenkins>/jnlpJars/agent.jar
+#   ./build.sh <remoting version> [targets]   download remoting.jar from repo.jenkins-ci.org
+#   ./build.sh path/to/agent.jar [targets]    use a jar from <jenkins>/jnlpJars/agent.jar
 #
-# Output: dist/agent8.jar and dist/jvmdg.jar. Needs JDK 17+, git, curl, unzip.
+# targets: Java versions to build for, from 8, 11 and 17 (default: 8).
+# Output in dist/: agent8.jar (Java 8), agent8-java11.jar, agent8-java17.jar, and jvmdg.jar.
+# Every jar runs on its target Java and anything newer.
+# Needs JDK 17+, git, curl, unzip, python3.
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT=$PWD
@@ -33,14 +36,19 @@ fetch $MC/org/ow2/asm/asm-tree/9.8/asm-tree-9.8.jar \
     14b7880cb7c85eed101e2710432fc3ffb83275532a6a894dc4c4095d49ad59f1 "$WORK/deps/asm-tree.jar"
 fetch $MC/com/github/spotbugs/spotbugs-annotations/4.10.3/spotbugs-annotations-4.10.3.jar \
     3fabaf088f8cd10803cc87dba4666cf874bdcd2e07ad154ed3fe403647ce3f2a "$WORK/deps/spotbugs-annotations.jar"
-JVMDG="java -jar $WORK/deps/jvmdg.jar -c 52"
 
 # 1. The original agent jar and the remoting source of the same version.
-if [[ -f ${1:?usage: build.sh <remoting version> | <agent.jar>} ]]; then
-    cp "$1" "$WORK/agent.jar"
+SOURCE=${1:?usage: build.sh <remoting version> | <agent.jar> [8] [11] [17]}
+shift
+TARGETS=("${@:-8}")
+for t in "${TARGETS[@]}"; do
+    [[ $t =~ ^(8|11|17)$ ]] || { echo "unsupported target Java $t; use 8, 11 or 17" >&2; exit 2; }
+done
+if [[ -f $SOURCE ]]; then
+    cp "$SOURCE" "$WORK/agent.jar"
 else
     curl -fsSL --retry 3 -o "$WORK/agent.jar" \
-        "https://repo.jenkins-ci.org/public/org/jenkins-ci/main/remoting/$1/remoting-$1.jar"
+        "https://repo.jenkins-ci.org/public/org/jenkins-ci/main/remoting/$SOURCE/remoting-$SOURCE.jar"
 fi
 VERSION=$(unzip -p "$WORK/agent.jar" META-INF/MANIFEST.MF | sed -n 's/^Version: *//p' | tr -d '\r')
 echo "remoting $VERSION"
@@ -71,20 +79,35 @@ javac -nowarn --release 8 -cp "$WORK/deps/asm.jar:$WORK/deps/asm-commons.jar:$WO
     src/io/jenkins/agent8/*.java
 (cd "$WORK/agent8" && for a in asm asm-commons asm-tree; do unzip -qo "$WORK/deps/$a.jar" 'org/*'; done)
 
-# 4. Pin serialVersionUIDs, then downgrade remoting to class version 52.
+# 4. Pin serialVersionUIDs once; downgrade per target.
 java -cp "$WORK/agent8" io.jenkins.agent8.Agent8 "$WORK/agent-patched.jar" "$WORK/agent-pinned.jar"
-$JVMDG downgrade -t "$WORK/agent-pinned.jar" "$WORK/agent-dg.jar" 2>&1 | grep -v 'org/osgi' || true
-$JVMDG shade -p io/jenkins/remoting/jvmdg -t "$WORK/agent-dg.jar" "$DIST/agent8.jar" 2>&1 | grep -v 'org/osgi' || true
+cp "$WORK/deps/jvmdg.jar" "$DIST/jvmdg.jar"
 
-# 5. Add the Java agent and the drop-in launcher to the same jar.
-(cd "$WORK/agent8" && jar uf "$DIST/agent8.jar" .)
-python3 - "$DIST/agent8.jar" "$VERSION" <<'PY'
+for target in "${TARGETS[@]}"; do
+    case $target in
+        8) jar=agent8.jar; cv=52 ;;
+        11) jar=agent8-java11.jar; cv=55 ;;
+        17) jar=agent8-java17.jar; cv=61 ;;
+    esac
+    out=$DIST/$jar
+    java -jar "$WORK/deps/jvmdg.jar" -c $cv downgrade -t "$WORK/agent-pinned.jar" "$WORK/agent-dg-$target.jar" 2>&1 |
+        grep -v 'org/osgi' || true
+    java -jar "$WORK/deps/jvmdg.jar" -c $cv shade -p io/jenkins/remoting/jvmdg -t "$WORK/agent-dg-$target.jar" "$out" 2>&1 |
+        grep -v 'org/osgi' || true
+
+    # 5. Add the Java agent and the drop-in launcher to the same jar.
+    (cd "$WORK/agent8" && jar uf "$out" .)
+    python3 - "$out" "$VERSION" "$target" "$cv" <<'PY'
 import os, sys, zipfile
-jar, version = sys.argv[1], sys.argv[2]
+jar, version, target, cv = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 src = zipfile.ZipFile(jar)
+bad = [n for n in src.namelist() if n.endswith(".class") and not n.endswith("module-info.class")
+       and int.from_bytes(src.read(n)[6:8], "big") > cv]
+if bad:
+    sys.exit("classes above Java %s in %s: %s" % (target, jar, bad[:5]))
 lines = [l for l in src.read("META-INF/MANIFEST.MF").decode().splitlines() if l and not l.startswith("Main-Class:")]
 lines += ["Main-Class: io.jenkins.agent8.Main", "Premain-Class: io.jenkins.agent8.Agent8",
-          "Agent8-Remoting-Version: " + version]
+          "Agent8-Remoting-Version: " + version, "Agent8-Target-Java: " + target]
 tmp = jar + ".tmp"
 with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
     for i in src.infolist():
@@ -93,15 +116,6 @@ with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
 src.close()
 os.replace(tmp, jar)
 PY
-cp "$WORK/deps/jvmdg.jar" "$DIST/jvmdg.jar"
-
-python3 - "$DIST/agent8.jar" <<'PY'
-import sys, zipfile
-z = zipfile.ZipFile(sys.argv[1])
-bad = [n for n in z.namelist() if n.endswith(".class") and not n.endswith("module-info.class")
-       and int.from_bytes(z.read(n)[6:8], "big") > 52]
-if bad:
-    sys.exit("classes above Java 8 in agent8.jar: %s" % bad[:5])
-PY
-echo "built $DIST/agent8.jar for remoting $VERSION"
-echo "run (jvmdg.jar next to agent8.jar): java -jar agent8.jar -url ... -secret ... -name ..."
+    echo "built $out (Java $target and newer) for remoting $VERSION"
+done
+echo "run (jvmdg.jar next to the jar): java -jar agent8.jar -url ... -secret ... -name ..."
