@@ -67,7 +67,7 @@ cp "$WORK/agent.jar" "$WORK/agent-patched.jar"
 # 3. The Java agent (Java 8 bytecode) with ASM and the compat classes inside.
 mkdir -p "$WORK/agent8/agent8-compat"
 javac -nowarn --release 8 -d "$WORK/agent8/agent8-compat" $(find compat -name "*.java")
-javac -nowarn --release 8 -cp "$WORK/deps/asm.jar:$WORK/deps/asm-commons.jar" -d "$WORK/agent8" \
+javac -nowarn --release 8 -cp "$WORK/deps/asm.jar:$WORK/deps/asm-commons.jar:$WORK/agent.jar" -d "$WORK/agent8" \
     src/io/jenkins/agent8/*.java
 (cd "$WORK/agent8" && for a in asm asm-commons asm-tree; do unzip -qo "$WORK/deps/$a.jar" 'org/*'; done)
 
@@ -76,9 +76,23 @@ java -cp "$WORK/agent8" io.jenkins.agent8.Agent8 "$WORK/agent-patched.jar" "$WOR
 $JVMDG downgrade -t "$WORK/agent-pinned.jar" "$WORK/agent-dg.jar" 2>&1 | grep -v 'org/osgi' || true
 $JVMDG shade -p io/jenkins/remoting/jvmdg -t "$WORK/agent-dg.jar" "$DIST/agent8.jar" 2>&1 | grep -v 'org/osgi' || true
 
-# 5. Add the Java agent to the same jar.
-printf 'Premain-Class: io.jenkins.agent8.Agent8\nAgent8-Remoting-Version: %s\n' "$VERSION" > "$WORK/manifest.txt"
-jar ufm "$DIST/agent8.jar" "$WORK/manifest.txt" -C "$WORK/agent8" .
+# 5. Add the Java agent and the drop-in launcher to the same jar.
+(cd "$WORK/agent8" && jar uf "$DIST/agent8.jar" .)
+python3 - "$DIST/agent8.jar" "$VERSION" <<'PY'
+import os, sys, zipfile
+jar, version = sys.argv[1], sys.argv[2]
+src = zipfile.ZipFile(jar)
+lines = [l for l in src.read("META-INF/MANIFEST.MF").decode().splitlines() if l and not l.startswith("Main-Class:")]
+lines += ["Main-Class: io.jenkins.agent8.Main", "Premain-Class: io.jenkins.agent8.Agent8",
+          "Agent8-Remoting-Version: " + version]
+tmp = jar + ".tmp"
+with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
+    for i in src.infolist():
+        data = ("\r\n".join(lines) + "\r\n").encode() if i.filename == "META-INF/MANIFEST.MF" else src.read(i)
+        out.writestr(i, data)
+src.close()
+os.replace(tmp, jar)
+PY
 cp "$WORK/deps/jvmdg.jar" "$DIST/jvmdg.jar"
 
 python3 - "$DIST/agent8.jar" <<'PY'
@@ -90,4 +104,4 @@ if bad:
     sys.exit("classes above Java 8 in agent8.jar: %s" % bad[:5])
 PY
 echo "built $DIST/agent8.jar for remoting $VERSION"
-echo "run: java -javaagent:agent8.jar -javaagent:jvmdg.jar -jar agent8.jar -url ... -secret ... -name ..."
+echo "run (jvmdg.jar next to agent8.jar): java -jar agent8.jar -url ... -secret ... -name ..."

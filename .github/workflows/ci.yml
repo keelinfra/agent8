@@ -13,9 +13,20 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Installer and playbook syntax
+        run: |
+          sh -n install.sh
+          pipx run --spec ansible-core ansible-playbook --syntax-check -i localhost, ansible/agent8.yml
+
   build:
     name: Jenkins ${{ matrix.jenkins }}, ${{ matrix.agent.name }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # publish releases
     strategy:
       fail-fast: false
       matrix:
@@ -66,3 +77,30 @@ jobs:
         with:
           name: agent8-jenkins-${{ env.JENKINS_VERSION }}
           path: dist/
+
+      # Releases are what install.sh downloads: one per remoting version, rebuilt
+      # from main so fixes reach every supported version.
+      - name: Publish release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && matrix.agent.name == 'HotSpot 8 on CentOS 6'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(unzip -p dist/agent8.jar META-INF/MANIFEST.MF | sed -n 's/^Agent8-Remoting-Version: *//p' | tr -d '\r')
+          tag=remoting-$V
+          notes="agent8 for Jenkins remoting $V (tested with Jenkins $JENKINS_VERSION), built from ${GITHUB_SHA::7}.
+          Install: \`sh install.sh --url <controller>\`, see the README.
+          jvmdg.jar is JvmDowngrader 2.0.1, unmodified, LGPL-2.1."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/agent8.jar dist/jvmdg.jar --clobber
+            gh release edit "$tag" --notes "$notes"
+          else
+            gh release create "$tag" dist/agent8.jar dist/jvmdg.jar --title "agent8 for remoting $V" --notes "$notes" ||
+              gh release upload "$tag" dist/agent8.jar dist/jvmdg.jar --clobber
+          fi
+          if [ "${{ matrix.jenkins }}" = latest-jdk21 ]; then gh release edit "$tag" --latest; fi
+
+      - name: Install from the published release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && matrix.agent.name == 'HotSpot 8 on CentOS 6'
+        run: |
+          docker run --rm --network host -v "$PWD/install.sh:/install.sh:ro" ${{ matrix.agent.jdk }} \
+            sh /install.sh --url http://localhost:8080/ --dir /tmp/agent8 --repo https://github.com/${{ github.repository }}

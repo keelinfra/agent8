@@ -15,25 +15,42 @@ Experimental. CI tests every change, and weekly, against the current Jenkins LTS
 | AIX 7.1 / 7.2 with IBM Java 8 | Experimental: not yet run on real AIX |
 | Solaris, HP-UX with Java 8 | Experimental: not tested |
 
-## Usage
+## Install
 
-Build the jar from your controller's own `agent.jar`, so the remoting versions match:
+On the build host, with its Java 8, and the controller's URL:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/keelinfra/agent8/main/install.sh
+sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
+```
+
+`install.sh` asks the controller for its remoting version, downloads the matching `agent8.jar` and `jvmdg.jar` from this repository's releases, checks that they start with the host's Java, and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
+
+```sh
+java -jar /path/to/agent.jar -url https://jenkins.example.com/ -secret <secret> -name <node> -workDir /srv/jenkins
+```
+
+Nothing else changes: `agent8.jar` starts the Java agents it needs itself. Without `--replace`, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download `agent8.jar` and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `sh install.sh --help` lists all options. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
+
+For many hosts, the Ansible playbook runs the same script and needs no Python on the hosts:
+
+```sh
+ansible-playbook -i inventory ansible/agent8.yml \
+  -e agent8_controller_url=https://jenkins.example.com/ \
+  -e agent8_replace=/opt/jenkins/agent.jar \
+  -e "agent8_restart='/etc/init.d/jenkins-agent restart'"
+```
+
+Run `install.sh` again after upgrading the controller, so the agent's remoting version matches it.
+
+The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has. Agents launched by the SSH Build Agents plugin are not supported yet: that plugin copies its own `remoting.jar` to the host and requires a newer Java; use inbound agents.
+
+### Build it yourself
 
 ```sh
 curl -fsSO https://jenkins.example.com/jnlpJars/agent.jar
-./build.sh agent.jar        # needs JDK 17+, git, curl, unzip, python3
+./build.sh agent.jar        # needs JDK 17+, git, curl, unzip, python3; writes dist/
 ```
-
-This produces `dist/agent8.jar` and `dist/jvmdg.jar`. Copy both to the legacy host, create an inbound agent in Jenkins, and start it with the two Java agents in this order:
-
-```sh
-java -javaagent:agent8.jar -javaagent:jvmdg.jar -jar agent8.jar \
-     -url https://jenkins.example.com/ -secret <secret> -name <node> -workDir /srv/jenkins
-```
-
-Rebuild `agent8.jar` whenever the controller is upgraded.
-
-The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has.
 
 ## How it works
 
@@ -41,7 +58,8 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
 
 1. **remoting is downgraded ahead of time.** [JvmDowngrader](https://github.com/unimined/JvmDowngrader) rewrites `agent.jar` to Java 8 bytecode and adds stand-ins for newer JDK APIs. One call it cannot handle is patched in the remoting source (`patches/`).
 2. **Classes from the controller are downgraded as they load**, by JvmDowngrader's Java agent (`jvmdg.jar`).
-3. **`agent8.jar` is also a Java agent** that keeps Java serialization compatible with the controller:
+3. **`agent8.jar` is a drop-in for `agent.jar`.** When started with plain `java -jar`, it starts the same Java again with both Java agents and the same JVM options.
+4. **`agent8.jar` is also a Java agent** that keeps Java serialization compatible with the controller:
    - Downgrading adds synthetic members, which changes the default `serialVersionUID` of classes that do not declare one. The controller would then reject every call. The agent pins the UID the controller computes, before downgrading. Records get UID 0.
    - It adds `java.util.CollSer`, the serial form of `List.of`, `Set.of`, `Map.of` and `Stream.toList()`, which Java 8 does not have.
    - On OpenJ9 it adds a stand-in for HotSpot's internal `ClassLoader$ParallelLoaders`, which JvmDowngrader's `ClassLoader` stubs need.
@@ -49,7 +67,7 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
 ## Tests
 
 - `test/serialization.sh`: objects written on Java 21 are read on Java 8.
-- `test/it.sh`: starts the agent in a container with Java 8 (CentOS 6 with HotSpot, Ubuntu with OpenJ9) against a running controller and checks Pipeline builds, abort, agent restart during a build, and the script console.
+- `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with Java 8 (CentOS 6 with HotSpot, Ubuntu with OpenJ9), starts it with the usual command against a running controller and checks Pipeline builds, abort, agent restart during a build, and the script console.
 
 CI runs both weekly against the latest LTS and weekly Jenkins.
 
@@ -57,7 +75,6 @@ CI runs both weekly against the latest LTS and weekly Jenkins.
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run code on agents (git, Maven, Docker, credentials binding …) still need testing.
 - AIX with IBM Java 8 is untested on real hardware; OpenJ9 on Linux covers the JVM but not AIX itself.
-- The SSH launcher copies the controller's own `remoting.jar` to the agent; use an inbound agent for now.
 
 ## License
 

@@ -29,8 +29,9 @@ wait_online() {
 start_agent() {
     secret=$(curl -fsS "$URL/computer/agent8/jenkins-agent.jnlp" |
         sed -n 's/.*<argument>\([0-9a-f]\{64\}\)<\/argument>.*/\1/p')
-    docker exec -d agent8-it sh -c "exec /opt/jdk8/bin/java -javaagent:/dist/agent8.jar -javaagent:/dist/jvmdg.jar \
-        -jar /dist/agent8.jar -url $URL/ -secret $secret -name agent8 -workDir /srv/agent8 ${AGENT_ARGS:-} >> /tmp/agent.log 2>&1"
+    # The usual inbound agent command: install.sh swapped agent8 in for agent.jar.
+    docker exec -d agent8-it sh -c "exec /opt/jdk8/bin/java -jar /opt/jenkins/agent.jar \
+        -url $URL/ -secret $secret -name agent8 -workDir /srv/agent8 ${AGENT_ARGS:-} >> /tmp/agent.log 2>&1"
     wait_online
 }
 build() { # job -> waits, prints result
@@ -60,10 +61,21 @@ docker cp agent8-jdk:/opt/java/openjdk "$T/jdk8"
 docker rm agent8-jdk >/dev/null
 docker rm -f agent8-it >/dev/null 2>&1 || true
 docker run -d --name agent8-it --network host -v "$PWD/dist:/dist:ro" -v "$T/jdk8:/opt/jdk8:ro" \
-    -v "$PWD/test/kill:/usr/local/bin/kill:ro" \
+    -v "$PWD/test/kill:/usr/local/bin/kill:ro" -v "$PWD/install.sh:/install.sh:ro" \
     "$AGENT_IMAGE" sleep infinity >/dev/null
 [[ -n ${KEEP:-} ]] || trap 'docker rm -f agent8-it >/dev/null 2>&1 || true' EXIT
 docker exec agent8-it sh -c 'cat /etc/redhat-release 2>/dev/null; /opt/jdk8/bin/java -version 2>&1 | head -1'
+
+# A host that already runs the stock agent.jar, which its Java 8 cannot start.
+curl -fsS -o "$T/agent.jar" "$URL/jnlpJars/agent.jar"
+docker exec agent8-it mkdir -p /opt/jenkins
+docker cp "$T/agent.jar" agent8-it:/opt/jenkins/agent.jar
+docker exec agent8-it sh /install.sh --from /dist --java /opt/jdk8/bin/java --replace /opt/jenkins/agent.jar
+check "install: old jar kept" docker exec agent8-it test -f /opt/jenkins/agent.jar.before-agent8
+check "install: jvmdg.jar next to the jar" docker exec agent8-it test -f /opt/jenkins/jvmdg.jar
+check "install: --remoting-version reads the controller jar" test "$(docker exec agent8-it /opt/jdk8/bin/java \
+    -cp /opt/jenkins/agent.jar io.jenkins.agent8.Main --remoting-version /opt/jenkins/agent.jar.before-agent8)" = \
+    "$(unzip -p "$T/agent.jar" META-INF/MANIFEST.MF | sed -n 's/^Version: *//p' | tr -d '\r')"
 
 groovy test/setup.groovy
 start_agent
@@ -87,7 +99,7 @@ check "abort: processes killed" test "$(remote_count 'sleep 60[01]')" = 0
 
 n=$(build agent8-durable)
 for _ in $(seq 1 30); do log agent8-durable "$n" 2>/dev/null | grep -q '^+ sleep 30' && break; sleep 2; done
-docker exec agent8-it pkill -f 'jar /dist/agent8.jar'
+docker exec agent8-it pkill -f /opt/jenkins/agent.jar
 sleep 5
 check "restart: step keeps running while agent is down" test "$(remote_count 'sleep 30')" = 1
 start_agent
