@@ -90,13 +90,15 @@ jobs:
           name: agent8-jenkins-${{ env.JENKINS_VERSION }}
           path: dist/
 
-      # CentOS 6's CA bundle cannot verify github.com, as on real RHEL 6 hosts; install.sh
-      # must still download the release (with Java's trust store).
+      # Install from GitHub on CentOS 6, then again without curl/wget, which forces the
+      # Java download path used when an old host's CA bundle cannot verify github.com.
       - name: Install from the latest release on CentOS 6
         if: matrix.agent.name == 'HotSpot 8 on CentOS 6'
         run: |
           docker create --name jdk8 eclipse-temurin:8-jdk >/dev/null
           docker cp jdk8:/opt/java/openjdk "$RUNNER_TEMP/jdk8"
           docker run --rm --network host -v "$PWD/install.sh:/install.sh:ro" -v "$RUNNER_TEMP/jdk8:/opt/jdk8:ro" centos:6 sh -c '
-            curl -sS -o /dev/null https://github.com/ || echo "(expected: curl cannot verify github.com here)"
-            sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8 --repo https://github.com/${{ github.repository }}'
+            set -e
+            sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8 --repo https://github.com/${{ github.repository }}
+            rm -f /usr/bin/curl /usr/bin/wget
+            sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8-java --repo https://github.com/${{ github.repository }}'
