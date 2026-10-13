@@ -4,5 +4,9 @@ FROM jenkins/jenkins:${JENKINS_TAG}
 ENV JAVA_OPTS=-Djenkins.install.runSetupWizard=false
 # Inbound agent port: any free one, since the runner may already use 50000 (the agent finds it over HTTP).
 ENV JENKINS_SLAVE_AGENT_PORT=0
-RUN jenkins-plugin-cli --plugins \
-    workflow-job workflow-cps workflow-durable-task-step workflow-basic-steps pipeline-stage-step junit
+# Newest plugins first; if they need a newer Jenkins (an older LTS line, such as 2.462.3),
+# take them from that LTS line's own update center.
+ARG PLUGINS="workflow-job workflow-cps workflow-durable-task-step workflow-basic-steps pipeline-stage-step junit"
+RUN jenkins-plugin-cli --plugins $PLUGINS || \
+    jenkins-plugin-cli --jenkins-update-center "https://updates.jenkins.io/stable-${JENKINS_VERSION%.*}/update-center.json" \
+      --plugins $PLUGINS
