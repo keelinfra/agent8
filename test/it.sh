@@ -7,14 +7,14 @@
 #   AGENT_IMAGE   OS image for the agent (default centos:6)
 #   JDK8_IMAGE    image to copy the old Java runtime from (default eclipse-temurin:8-jdk)
 #   EXPECT_JAVA   java.version prefix the agent must report (default 1.8)
-#   EXPECT_JAR    dist/ jar install.sh must pick for that Java (default agent8.jar)
+#   EXPECT_JAR    dist/ jar install.sh must pick for that Java (default agent8-java8.jar)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 URL=${JENKINS_URL:-http://localhost:8080}
 AGENT_IMAGE=${AGENT_IMAGE:-centos:6}
 JDK8_IMAGE=${JDK8_IMAGE:-eclipse-temurin:8-jdk}
 EXPECT_JAVA=${EXPECT_JAVA:-1.8}
-EXPECT_JAR=${EXPECT_JAR:-agent8.jar}
+EXPECT_JAR=${EXPECT_JAR:-agent8-java8.jar}
 T=$(mktemp -d)
 C=$T/cookies
 failures=0

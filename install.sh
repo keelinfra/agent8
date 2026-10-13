@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs agent8 on a build host that only has old Java (8, 11 or 17), and optionally
 # swaps it in for the agent.jar the host already uses. It picks the build made for the
-# host's Java: agent8.jar (Java 8), agent8-java11.jar or agent8-java17.jar. POSIX sh: runs on RHEL/CentOS 6,
+# host's Java: agent8-java8.jar, agent8-java11.jar or agent8-java17.jar; it is installed as agent8.jar. POSIX sh: runs on RHEL/CentOS 6,
 # AIX (ksh), Solaris and HP-UX.
 #
 #   sh install.sh --url https://jenkins.example.com/ [--replace /path/to/agent.jar]
@@ -51,15 +51,14 @@ case $JV in
     1.*) JMAJOR=8 ;;
     *) JMAJOR=$(echo "$JV" | sed 's/[^0-9].*//') ;;
 esac
-# The closest build at or below this Java; agent8.jar (Java 8) is the fallback.
+# The closest build at or below this Java; the Java 8 build is the fallback.
 if [ "$JMAJOR" -ge 17 ] 2>/dev/null; then ASSET=agent8-java17.jar
 elif [ "$JMAJOR" -ge 11 ] 2>/dev/null; then ASSET=agent8-java11.jar
-else ASSET=agent8.jar
+else ASSET=agent8-java8.jar
 fi
 case $TARGET in
     '') ;;
-    8) ASSET=agent8.jar ;;
-    11|17) ASSET=agent8-java$TARGET.jar ;;
+    8|11|17) ASSET=agent8-java$TARGET.jar ;;
     *) die "--target must be 8, 11 or 17" ;;
 esac
 WANT=$ASSET
@@ -83,19 +82,19 @@ get_release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) 
     if [ "$1" = latest ]; then base=$REPO/releases/latest/download; else base=$REPO/releases/download/$1; fi
     fetch "$base/jvmdg.jar" "$WORK/jvmdg.jar" || return 1
     ASSET=$WANT
-    if [ "$ASSET" != agent8.jar ] && fetch "$base/$ASSET" "$WORK/agent8.jar"; then return 0; fi
-    ASSET=agent8.jar
-    fetch "$base/agent8.jar" "$WORK/agent8.jar"
+    if [ "$ASSET" != agent8-java8.jar ] && fetch "$base/$ASSET" "$WORK/agent8.jar"; then return 0; fi
+    ASSET=agent8-java8.jar
+    fetch "$base/$ASSET" "$WORK/agent8.jar"
 }
 
-# agent8.jar and jvmdg.jar
+# The agent8 jar (kept as $WORK/agent8.jar) and jvmdg.jar
 if [ -n "$FROM" ]; then
-    [ -f "$FROM/$ASSET" ] || [ -n "$TARGET" ] || ASSET=agent8.jar
+    [ -f "$FROM/$ASSET" ] || [ -n "$TARGET" ] || ASSET=agent8-java8.jar
     cp "$FROM/$ASSET" "$WORK/agent8.jar" && cp "$FROM/jvmdg.jar" "$WORK/" ||
         die "no $ASSET and jvmdg.jar in $FROM"
 else
     if [ -z "$VERSION" ] && [ -n "$URL" ]; then
-        # The controller's agent.jar names its remoting version; the latest agent8.jar can read it.
+        # The controller's agent.jar names its remoting version; any agent8 jar can read it.
         release latest || die "cannot download from $REPO; use --from DIR"
         fetch "${URL%/}/jnlpJars/agent.jar" "$WORK/controller-agent.jar" ||
             die "cannot download ${URL%/}/jnlpJars/agent.jar"
@@ -114,7 +113,7 @@ fi
 
 # Check that this Java runs it before touching anything.
 GOT=$("$JAVA" -jar "$WORK/agent8.jar" -version 2>/dev/null | tail -n 1) ||
-    die "agent8.jar does not start with $JAVA"
+    die "$ASSET does not start with $JAVA"
 say "$ASSET runs remoting $GOT on this host"
 
 mkdir -p "$DIR"

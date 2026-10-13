@@ -28,13 +28,13 @@ curl -fsSLO https://raw.githubusercontent.com/keelinfra/agent8/main/install.sh
 sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 ```
 
-`install.sh` asks the controller for its remoting version, downloads the matching agent8 jar for the host's Java (`agent8.jar` for Java 8, `agent8-java11.jar`, `agent8-java17.jar`) and `jvmdg.jar` from this repository's releases, checks that they start with the host's Java, and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
+`install.sh` asks the controller for its remoting version, downloads the matching agent8 jar for the host's Java (`agent8-java8.jar`, `agent8-java11.jar` or `agent8-java17.jar`) and `jvmdg.jar` from this repository's releases, checks that they start with the host's Java, and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
 
 ```sh
 java -jar /path/to/agent.jar -url https://jenkins.example.com/ -secret <secret> -name <node> -workDir /srv/jenkins
 ```
 
-Nothing else changes: `agent8.jar` starts the Java agents it needs itself. Without `--replace`, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
+Nothing else changes: the agent8 jar starts the Java agents it needs itself. Without `--replace`, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
 
 For many hosts, the Ansible playbook runs the same script and needs no Python on the hosts:
 
@@ -53,7 +53,7 @@ The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and
 
 ```sh
 curl -fsSO https://jenkins.example.com/jnlpJars/agent.jar
-./build.sh agent.jar        # needs JDK 17+, git, curl, unzip, python3; writes dist/agent8.jar
+./build.sh agent.jar          # needs JDK 17+, git, curl, unzip, python3; writes dist/agent8-java8.jar
 ./build.sh agent.jar 8 11 17  # also dist/agent8-java11.jar and dist/agent8-java17.jar
 ```
 
@@ -63,8 +63,8 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
 
 1. **remoting is downgraded ahead of time.** [JvmDowngrader](https://github.com/unimined/JvmDowngrader) rewrites `agent.jar` to Java 8 bytecode (or 11 or 17) and adds stand-ins for newer JDK APIs. One call it cannot handle is patched in the remoting source (`patches/`).
 2. **Classes from the controller are downgraded as they load**, by JvmDowngrader's Java agent (`jvmdg.jar`).
-3. **`agent8.jar` is a drop-in for `agent.jar`.** When started with plain `java -jar`, it starts the same Java again with both Java agents and the same JVM options.
-4. **`agent8.jar` is also a Java agent** that keeps Java serialization compatible with the controller:
+3. **The agent8 jar is a drop-in for `agent.jar`.** When started with plain `java -jar`, it starts the same Java again with both Java agents and the same JVM options.
+4. **It is also a Java agent** that keeps Java serialization compatible with the controller:
    - Downgrading adds synthetic members, which changes the default `serialVersionUID` of classes that do not declare one. The controller would then reject every call. The agent pins the UID the controller computes, before downgrading. Records get UID 0.
    - It adds `java.util.CollSer`, the serial form of `List.of`, `Set.of`, `Map.of` and `Stream.toList()`, which Java 8 does not have. On Java 9 to 15 it teaches the JDK's own `CollSer` the form `Stream.toList()` uses since Java 16.
    - On OpenJ9 it adds a stand-in for HotSpot's internal `ClassLoader$ParallelLoaders`, which JvmDowngrader's `ClassLoader` stubs need.
@@ -83,4 +83,4 @@ CI runs both weekly against the latest LTS and weekly Jenkins.
 
 ## License
 
-[MIT](LICENSE). `agent8.jar` contains Jenkins remoting (MIT) and ASM (BSD-3-Clause). `jvmdg.jar` is JvmDowngrader, distributed unmodified under the [LGPL-2.1](https://github.com/unimined/JvmDowngrader/blob/main/LICENSE.md).
+[MIT](LICENSE). The agent8 jars contain Jenkins remoting (MIT) and ASM (BSD-3-Clause). `jvmdg.jar` is JvmDowngrader, distributed unmodified under the [LGPL-2.1](https://github.com/unimined/JvmDowngrader/blob/main/LICENSE.md).
