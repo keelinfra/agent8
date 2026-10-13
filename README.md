@@ -51,14 +51,7 @@ Run `install.sh` again after upgrading the controller, so the agent's remoting v
 
 **The old jar.** On the first `--replace`, the host's original jar is renamed to `agent.jar.before-agent8` (a later run never overwrites it), and agent8 is moved into place under the original name, so a running agent keeps its open file. `sh install.sh --restore /path/to/agent.jar` puts the original back and removes `jvmdg.jar`. Keep the backup until the agent has run builds for a while, then delete it.
 
-**Windows.** `install.ps1` takes the same options (Windows PowerShell 5.1 or newer). Stop the agent or its service first, since Windows locks a jar in use:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1 -Url https://jenkins.example.com/ -Replace C:\jenkins\agent.jar
-powershell -ExecutionPolicy Bypass -File install.ps1 -Restore C:\jenkins\agent.jar
-```
-
-`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under `ksh` on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu, and `install.ps1` on Windows; AIX, Solaris and HP-UX are untested.
+`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under `ksh` on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu; AIX, Solaris and HP-UX are untested. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
 
 The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has. Agents launched by the SSH Build Agents plugin are not supported yet: that plugin copies its own `remoting.jar` to the host and requires a newer Java; use inbound agents.
 
