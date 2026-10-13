@@ -81,12 +81,19 @@ public final class Agent8 implements ClassFileTransformer {
         return w.toByteArray();
     }
 
-    /** Copies the compat classes out of this jar, since the bootstrap path needs a jar file. */
+    /** JDK classes newer JDKs or other JVMs have, which this JVM may lack. */
+    static final String[] COMPAT_CLASSES = {"java/util/CollSer", "java/lang/ClassLoader$ParallelLoaders"};
+
+    /** Copies the compat classes this JVM lacks out of this jar, since the bootstrap path needs a jar file. */
     private static File compatJar() throws IOException {
         File jar = File.createTempFile("agent8-compat", ".jar");
         jar.deleteOnExit();
         try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(jar))) {
-            for (String cls : new String[] {"java/util/CollSer.class"}) {
+            for (String name : COMPAT_CLASSES) {
+                if (ClassLoader.getSystemResource(name + ".class") != null) {
+                    continue; // the JVM has its own
+                }
+                String cls = name + ".class";
                 try (InputStream in = Agent8.class.getClassLoader().getResourceAsStream(COMPAT + cls)) {
                     if (in == null) {
                         throw new IOException("missing " + COMPAT + cls);

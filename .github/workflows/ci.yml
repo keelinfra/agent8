@@ -14,12 +14,19 @@ permissions:
 
 jobs:
   build:
-    name: Jenkins ${{ matrix.jenkins }}
+    name: Jenkins ${{ matrix.jenkins }}, ${{ matrix.agent.name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         jenkins: [lts-jdk21, latest-jdk21]
+        agent:
+          - name: HotSpot 8 on CentOS 6
+            jdk: eclipse-temurin:8-jdk
+            os: centos:6
+          - name: OpenJ9 8
+            jdk: ibm-semeru-runtimes:open-8-jdk
+            os: ibm-semeru-runtimes:open-8-jdk
     steps:
       - uses: actions/checkout@v5
 
@@ -41,15 +48,21 @@ jobs:
 
       - name: Serialization test
         run: test/serialization.sh
+        env:
+          JDK8_IMAGE: ${{ matrix.agent.jdk }}
 
-      - name: Integration test (CentOS 6, Java 8)
+      - name: Integration test
         run: test/it.sh
+        env:
+          JDK8_IMAGE: ${{ matrix.agent.jdk }}
+          AGENT_IMAGE: ${{ matrix.agent.os }}
 
       - name: Controller log
         if: failure()
         run: docker logs controller 2>&1 | tail -200
 
       - uses: actions/upload-artifact@v4
+        if: matrix.agent.name == 'HotSpot 8 on CentOS 6'
         with:
           name: agent8-jenkins-${{ env.JENKINS_VERSION }}
           path: dist/
