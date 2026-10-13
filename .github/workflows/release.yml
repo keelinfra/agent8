@@ -1,0 +1,123 @@
+# Manual release: builds agent8 for each Jenkins version, tests it like CI does and
+# publishes one GitHub Release per remoting version (what install.sh downloads).
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      jenkins:
+        description: Jenkins image tags, space separated (e.g. "lts-jdk21 latest-jdk21 2.541.3-lts-jdk21")
+        default: lts-jdk21 latest-jdk21
+      latest:
+        description: The release built from this tag becomes "latest", install.sh's fallback
+        default: lts-jdk21
+      dry_run:
+        description: Build and test only, publish nothing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      jenkins: ${{ steps.list.outputs.jenkins }}
+    steps:
+      - id: list
+        env:
+          JENKINS: ${{ inputs.jenkins }}
+        run: echo "jenkins=$(printf '%s\n' $JENKINS | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Jenkins ${{ matrix.jenkins }}
+    needs: versions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      max-parallel: 1  # two Jenkins versions can share a remoting version, so one release
+      matrix:
+        jenkins: ${{ fromJSON(needs.versions.outputs.jenkins) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Start controller
+        run: |
+          docker build -q -t controller --build-arg JENKINS_TAG=${{ matrix.jenkins }} -f test/Dockerfile.controller test
+          docker run -d --name controller --network host controller
+          for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
+          curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
+          echo "JENKINS_VERSION=$(curl -fsSI localhost:8080/login | sed -n 's/^X-Jenkins: *//Ip' | tr -d '\r')" >> "$GITHUB_ENV"
+
+      - name: Build agent8-java8.jar, agent8-java11.jar and agent8-java17.jar
+        run: ./build.sh agent.jar 8 11 17
+
+      - name: Test HotSpot 8 on CentOS 6
+        run: |
+          JDK8_IMAGE=eclipse-temurin:8-jdk test/serialization.sh
+          JDK8_IMAGE=eclipse-temurin:8-jdk AGENT_IMAGE=centos:6 test/it.sh
+
+      - name: Test OpenJ9 8
+        run: |
+          JDK8_IMAGE=ibm-semeru-runtimes:open-8-jdk test/serialization.sh
+          JDK8_IMAGE=ibm-semeru-runtimes:open-8-jdk AGENT_IMAGE=ibm-semeru-runtimes:open-8-jdk test/it.sh
+
+      - name: Test HotSpot 11
+        env:
+          JDK8_IMAGE: eclipse-temurin:11-jdk
+          AGENT_IMAGE: eclipse-temurin:11-jdk
+          AGENT_JAR: agent8-java11.jar
+          EXPECT_JAVA: '11'
+          EXPECT_JAR: agent8-java11.jar
+        run: test/serialization.sh && test/it.sh
+
+      - name: Controller log
+        if: failure()
+        run: docker logs controller 2>&1 | tail -200
+
+      - name: Checksums
+        run: cd dist && sha256sum *.jar > sha256sums.txt && cat sha256sums.txt
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: agent8-jenkins-${{ env.JENKINS_VERSION }}
+          path: dist/
+
+      - name: Publish release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(unzip -p dist/agent8-java8.jar META-INF/MANIFEST.MF | sed -n 's/^Agent8-Remoting-Version: *//p' | tr -d '\r')
+          tag=remoting-$V
+          notes="agent8 for Jenkins remoting $V (tested with Jenkins $JENKINS_VERSION), built from ${GITHUB_SHA::7}.
+
+          | Host Java | Jar |
+          |---|---|
+          | 8 and newer | agent8-java8.jar |
+          | 11 and newer | agent8-java11.jar |
+          | 17 and newer | agent8-java17.jar (built, not yet tested) |
+
+          Install: \`sh install.sh --url <controller>\` picks the right jar, see the README.
+          jvmdg.jar is JvmDowngrader 2.0.1, unmodified, LGPL-2.1. Checksums: sha256sums.txt."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.jar dist/sha256sums.txt --clobber
+            gh release edit "$tag" --notes "$notes"
+          else
+            gh release create "$tag" dist/*.jar dist/sha256sums.txt --title "agent8 for remoting $V" --notes "$notes"
+          fi
+          if [ "${{ matrix.jenkins }}" = "${{ inputs.latest }}" ]; then gh release edit "$tag" --latest; fi
+
+      - name: Install from the published release
+        if: ${{ !inputs.dry_run }}
+        run: |
+          docker run --rm --network host -v "$PWD/install.sh:/install.sh:ro" eclipse-temurin:8-jdk \
+            sh /install.sh --url http://localhost:8080/ --dir /tmp/agent8 --repo https://github.com/${{ github.repository }}
