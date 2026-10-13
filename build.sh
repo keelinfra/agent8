@@ -58,19 +58,26 @@ git clone -q --depth 1 --branch "$VERSION" https://github.com/jenkinsci/remoting
 #    recompile only the patched classes against the original jar.
 CHANGED=()
 for p in "$ROOT"/patches/*.patch; do
-    git -C "$WORK/remoting" apply "$p"
+    if git -C "$WORK/remoting" apply "$p" 2>/dev/null; then :
+    elif git -C "$WORK/remoting" apply --reverse --check "$p" 2>/dev/null; then
+        echo "$(basename "$p"): not needed, remoting $VERSION already has it"
+    else
+        git -C "$WORK/remoting" apply "$p" # fails, showing why
+    fi
 done
 mapfile -t CHANGED < <(git -C "$WORK/remoting" diff --name-only)
 mkdir -p "$WORK/patched"
-for f in "${CHANGED[@]}"; do
-    # agent.jar shades remoting's own dependencies
-    sed -i 's/^import org\.jenkinsci\.constant_pool_scanner/import io.jenkins.remoting.shaded.org.jenkinsci.constant_pool_scanner/' \
-        "$WORK/remoting/$f"
-done
-javac -nowarn --release 17 -cp "$WORK/agent.jar:$WORK/deps/spotbugs-annotations.jar" -d "$WORK/patched" \
-    "${CHANGED[@]/#/$WORK/remoting/}"
 cp "$WORK/agent.jar" "$WORK/agent-patched.jar"
-(cd "$WORK/patched" && jar uf "$WORK/agent-patched.jar" $(find . -name '*.class'))
+if [[ ${#CHANGED[@]} -gt 0 ]]; then
+    for f in "${CHANGED[@]}"; do
+        # agent.jar shades remoting's own dependencies
+        sed -i 's/^import org\.jenkinsci\.constant_pool_scanner/import io.jenkins.remoting.shaded.org.jenkinsci.constant_pool_scanner/' \
+            "$WORK/remoting/$f"
+    done
+    javac -nowarn --release 17 -cp "$WORK/agent.jar:$WORK/deps/spotbugs-annotations.jar" -d "$WORK/patched" \
+        "${CHANGED[@]/#/$WORK/remoting/}"
+    (cd "$WORK/patched" && jar uf "$WORK/agent-patched.jar" $(find . -name '*.class'))
+fi
 
 # 3. The Java agent (Java 8 bytecode) with ASM and the compat classes inside.
 mkdir -p "$WORK/agent8/agent8-compat"
