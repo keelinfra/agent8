@@ -8,4 +8,4 @@ java -version 2>&1 | head -1
 javac -d "$T" test/SerialWrite.java && java -cp "$T" SerialWrite "$T/objects.bin"
 javac -nowarn --release 8 -d "$T" test/SerialRead.java
 docker run --rm -v "$T:/t" -v "$PWD/dist:/dist:ro" "${JDK8_IMAGE:-eclipse-temurin:8-jdk}" \
-    java -javaagent:/dist/agent8.jar -cp /t SerialRead /t/objects.bin
+    java -javaagent:/dist/${AGENT_JAR:-agent8.jar} -cp /t SerialRead /t/objects.bin

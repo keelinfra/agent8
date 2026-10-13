@@ -42,6 +42,9 @@ public final class Agent8 implements ClassFileTransformer {
     public static void premain(String args, Instrumentation inst) throws IOException {
         inst.appendToBootstrapClassLoaderSearch(new JarFile(compatJar()));
         inst.addTransformer(new Agent8());
+        if (CollSerNulls.needed()) {
+            CollSerNulls.install(inst);
+        }
         active = true;
     }
 

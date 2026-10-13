@@ -72,6 +72,7 @@ jobs:
         run: test/serialization.sh
         env:
           JDK8_IMAGE: ${{ matrix.agent.jdk }}
+          AGENT_JAR: ${{ matrix.agent.jar || 'agent8.jar' }}
 
       - name: Integration test
         run: test/it.sh
