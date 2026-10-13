@@ -11,7 +11,7 @@
 #   --version V      remoting version to install instead of asking the controller
 #   --replace PATH   swap the agent.jar at PATH for agent8 (a backup is kept), so the
 #                    existing start command keeps working unchanged
-#   --dir DIR        where to install (default /opt/agent8)
+#   --dir DIR        where to install (default /opt/agent8; with --replace, only if given)
 #   --from DIR       offline: take the agent8 jar and jvmdg.jar from DIR, download nothing
 #   --java PATH      java to use (default $JAVA_HOME/bin/java, then java on PATH)
 #   --target N       which build to install: 8, 11 or 17 (default: from the host's Java)
@@ -30,13 +30,13 @@ if (eval 'test "$(echo x)" = x') 2>/dev/null; then :; else
 fi
 set -e
 
-URL='' RESTORE='' CACERT='' TARGET='' VERSION='' REPLACE='' DIR=/opt/agent8 FROM='' JAVA='' REPO=https://github.com/keelinfra/agent8
+URL='' DIR_SET='' RESTORE='' CACERT='' TARGET='' VERSION='' REPLACE='' DIR=/opt/agent8 FROM='' JAVA='' REPO=https://github.com/keelinfra/agent8
 while [ $# -gt 0 ]; do
     case $1 in
         --url) URL=$2; shift 2 ;;
         --version) VERSION=$2; shift 2 ;;
         --replace) REPLACE=$2; shift 2 ;;
-        --dir) DIR=$2; shift 2 ;;
+        --dir) DIR=$2; DIR_SET=1; shift 2 ;;
         --from) FROM=$2; shift 2 ;;
         --java) JAVA=$2; shift 2 ;;
         --target) TARGET=$2; shift 2 ;;
@@ -198,9 +198,13 @@ fi
 GOT=$(sed -n '$p' "$WORK/version.out")
 say "$ASSET runs remoting $GOT on this host"
 
-mkdir -p "$DIR"
-cp "$WORK/agent8.jar" "$WORK/jvmdg.jar" "$DIR/"
-say "installed $DIR/agent8.jar and $DIR/jvmdg.jar"
+# With --replace the jar goes next to the old one; /opt/agent8 (often not writable by the
+# agent's user) is only written when asked for.
+if [ -z "$REPLACE" ] || [ -n "$DIR_SET" ]; then
+    mkdir -p "$DIR"
+    cp "$WORK/agent8.jar" "$WORK/jvmdg.jar" "$DIR/"
+    say "installed $DIR/agent8.jar and $DIR/jvmdg.jar"
+fi
 
 if [ -n "$REPLACE" ]; then
     target_dir=$(dirname "$REPLACE")

@@ -20,7 +20,7 @@ ln -s "$DEPS" "$WORK/deps"
 
 # Dependencies, pinned by checksum and cached in .deps.
 fetch() { # url sha256 file
-    if ! echo "$2  $3" | sha256sum -c --quiet 2>/dev/null; then
+    if ! echo "$2  $3" | sha256sum -c --quiet >/dev/null 2>&1; then
         curl -fsSL --retry 5 --retry-all-errors -o "$3" "$1"
         echo "$2  $3" | sha256sum -c --quiet
     fi

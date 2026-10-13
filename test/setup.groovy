@@ -1,4 +1,5 @@
 // Creates the inbound node "agent8" and the test jobs. Run in the controller's script console.
+import hudson.model.ComputerSet
 import hudson.slaves.DumbSlave
 import hudson.slaves.JNLPLauncher
 import jenkins.model.Jenkins
@@ -6,6 +7,11 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition
 import org.jenkinsci.plugins.workflow.job.WorkflowJob
 
 def j = Jenkins.get()
+// The versioncolumn plugin's "JVM Version" monitor disconnects agents on an older Java than
+// the controller; agent8 hosts need it set to keep them connected (see the README).
+ComputerSet.monitors.findAll { it.class.name == 'hudson.plugin.versioncolumn.JVMVersionMonitor' }.each {
+    it.disconnect = false
+}
 if (j.getNode('agent8') == null) {
     def n = new DumbSlave('agent8', '/srv/agent8', new JNLPLauncher(true))
     n.labelString = 'agent8'

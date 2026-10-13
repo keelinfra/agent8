@@ -1,5 +1,6 @@
 // The "JVM Version" node monitor (versioncolumn plugin) takes agents offline whose Java is
-// older than the controller's, unless set to "ignore". Run it now and report the result.
+// older than the controller's. agent8 hosts need it set to not disconnect (as setup.groovy
+// does); run it now and report whether the agent stayed online.
 import hudson.plugin.versioncolumn.JVMVersionMonitor
 def d = Jenkins.get().getDescriptorByType(JVMVersionMonitor.JvmVersionDescriptor)
 def t = d.triggerUpdate()

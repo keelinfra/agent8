@@ -44,8 +44,9 @@ public final class Main {
         return false;
     }
 
-    private static int relaunch(String[] args) throws IOException, InterruptedException {
-        File self = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+    private static int relaunch(String[] args) throws Exception {
+        // toURI() decodes the path, e.g. %20 for a space in the directory name.
+        File self = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
         File jvmdg = jvmdg(self);
         List<String> cmd = new ArrayList<>();
         cmd.add(new File(System.getProperty("java.home"), "bin" + File.separator + "java").getPath());

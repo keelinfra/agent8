@@ -34,7 +34,7 @@ sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 java -jar /path/to/agent.jar -url https://jenkins.example.com/ -secret <secret> -name <node> -workDir /srv/jenkins
 ```
 
-Nothing else changes: the agent8 jar starts the Java agents it needs itself. Without `--replace`, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options.
+Nothing else changes: the agent8 jar starts the Java agents it needs itself. With `--replace` it writes only next to the old jar, so it runs as the agent's own user; without it, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options.
 
 Old hosts often have a CA bundle too old to verify github.com (`curl: (60) SSL certificate problem`). Do not turn verification off. `install.sh` downloads the release files with Java's own trust store when curl or wget cannot verify them; to fetch `install.sh` itself, copy it from a current machine (`scp install.sh host:`), or point curl at a current bundle (`curl --cacert /path/to/cacert.pem ...`, also `install.sh --cacert FILE`). Fully offline hosts use `--from DIR`. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
 
@@ -46,6 +46,17 @@ ansible-playbook -i inventory ansible/agent8.yml \
   -e agent8_replace=/opt/jenkins/agent.jar \
   -e "agent8_restart='/etc/init.d/jenkins-agent restart'"
 ```
+
+**Controller setting, if the Versions Node Monitors plugin (`versioncolumn`) is installed.** Its *JVM Version* monitor takes every agent whose Java is older than the controller's offline, seconds after it connects ("incompatible JVM version between agent and controller"). For agent8 hosts, set it to not disconnect under *Manage Jenkins → Nodes → Configure Node Monitors*, or in configuration as code:
+
+```yaml
+jenkins:
+  nodeMonitors:
+    - jvmVersion:
+        ignored: true
+```
+
+Its *Remoting Version* monitor also takes agents offline whose remoting version differs from the controller's. `install.sh` installs the matching build when a release exists for the controller's remoting version; when it falls back to the latest build ("no agent8 build for remoting … yet"), ignore that monitor too, or ask for a build for that version.
 
 Run `install.sh` again after upgrading the controller, so the agent's remoting version matches it.
 
