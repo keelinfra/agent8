@@ -115,6 +115,10 @@ printf 'println System.getProperty("java.version")\n' > "$T/console.groovy"
 out=$(post --data-urlencode "script@$T/console.groovy" "$URL/computer/agent8/scriptText")
 check "script console runs on Java $EXPECT_JAVA ($out)" test "${out:0:${#EXPECT_JAVA}}" = "$EXPECT_JAVA"
 
+out=$(groovy test/jvm-monitor.groovy)
+echo "$out"
+check "JVM version monitor keeps the agent online ($out)" sh -c "echo '$out' | grep -q 'offline=false'"
+
 transform_errors=$(docker exec agent8-it sh -c 'grep -c "Failed to transform\|\[agent8\]" /tmp/agent.log || true')
 check "no class transformation errors ($transform_errors)" test "$transform_errors" = 0
 
