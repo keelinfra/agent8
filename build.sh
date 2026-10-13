@@ -59,8 +59,9 @@ git clone -q --depth 1 --branch "$VERSION" https://github.com/jenkinsci/remoting
 CHANGED=()
 for p in "$ROOT"/patches/*.patch; do
     if git -C "$WORK/remoting" apply "$p" 2>/dev/null; then :
-    elif git -C "$WORK/remoting" apply --reverse --check "$p" 2>/dev/null; then
-        echo "$(basename "$p"): not needed, remoting $VERSION already has it"
+    elif ! grep -rq 'getDefinedPackage(' "$WORK/remoting/src/main/java"; then
+        # Older remoting (e.g. 3248, Jenkins 2.462.x) still calls getPackage.
+        echo "$(basename "$p"): not needed, remoting $VERSION does not call getDefinedPackage"
     else
         git -C "$WORK/remoting" apply "$p" # fails, showing why
     fi
