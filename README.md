@@ -2,6 +2,8 @@
 
 Run a **native Jenkins agent on Java 8**, connected to a current Jenkins controller that runs on Java 21 or newer.
 
+> Agent8 is an independent project. It is not part of, or endorsed or supported by, the Jenkins project. Please report problems [here](https://github.com/keelinfra/agent8/issues), not to the Jenkins issue tracker.
+
 Jenkins requires Java 21+ on the controller and on every agent. Build hosts that cannot run Java 21 — RHEL/CentOS 6, AIX 7.1, older HP-UX and Solaris — are left behind, and their teams stay on old, unsupported Jenkins. This project builds an `agent.jar` that runs on Java 8, so these hosts stay ordinary agents: labels, executors, `sh`, file steps, `junit`, `stash`, aborts and the script console work as on any other node.
 
 ## Status
@@ -105,4 +107,10 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 
 ## License
 
-[MIT](LICENSE). The agent8 jars contain Jenkins remoting (MIT) and ASM (BSD-3-Clause). `jvmdg.jar` is JvmDowngrader, distributed unmodified under the [LGPL-2.1](https://github.com/unimined/JvmDowngrader/blob/main/LICENSE.md).
+[MIT](LICENSE) for this project's own code. The agent8 jars also contain:
+
+- Jenkins remoting (MIT), downgraded and with one patched class;
+- ASM (BSD-3-Clause);
+- classes from [JvmDowngrader](https://github.com/unimined/JvmDowngrader) (LGPL-2.1), shaded into the jar by `build.sh`: the stand-ins for newer JDK APIs that the downgraded remoting calls. They are unmodified apart from the package rename; their source is in the JvmDowngrader repository at the version `build.sh` pins (2.0.1), and `build.sh` rebuilds the jars from it, so you can swap in your own build of JvmDowngrader.
+
+`jvmdg.jar` is JvmDowngrader 2.0.1 itself, distributed unmodified under the [LGPL-2.1](https://github.com/unimined/JvmDowngrader/blob/main/LICENSE.md).
