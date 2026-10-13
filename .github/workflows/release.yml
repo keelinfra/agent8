@@ -108,6 +108,8 @@ jobs:
 
           Install: \`sh install.sh --url <controller>\` picks the right jar, see the README.
           jvmdg.jar is JvmDowngrader 2.0.1, unmodified, LGPL-2.1. Checksums: sha256sums.txt."
+          # The tag marks the commit this release was built from.
+          git tag -f "$tag" && git push -f origin "refs/tags/$tag"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" dist/*.jar dist/sha256sums.txt --clobber
             gh release edit "$tag" --notes "$notes"
