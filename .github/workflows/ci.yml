@@ -72,7 +72,7 @@ jobs:
         if: failure()
         run: docker logs controller 2>&1 | tail -200
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: matrix.agent.name == 'HotSpot 8 on CentOS 6'
         with:
           name: agent8-jenkins-${{ env.JENKINS_VERSION }}
@@ -97,7 +97,8 @@ jobs:
             gh release create "$tag" dist/agent8.jar dist/jvmdg.jar --title "agent8 for remoting $V" --notes "$notes" ||
               gh release upload "$tag" dist/agent8.jar dist/jvmdg.jar --clobber
           fi
-          if [ "${{ matrix.jenkins }}" = latest-jdk21 ]; then gh release edit "$tag" --latest; fi
+          # "latest" (install.sh's fallback) follows the LTS line.
+          if [ "${{ matrix.jenkins }}" = lts-jdk21 ]; then gh release edit "$tag" --latest; fi
 
       - name: Install from the published release
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && matrix.agent.name == 'HotSpot 8 on CentOS 6'
