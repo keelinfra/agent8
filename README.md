@@ -34,7 +34,7 @@ sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 java -jar /path/to/agent.jar -url https://jenkins.example.com/ -secret <secret> -name <node> -workDir /srv/jenkins
 ```
 
-Nothing else changes: `agent8.jar` starts the Java agents it needs itself. Without `--replace`, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `sh install.sh --help` lists all options. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
+Nothing else changes: `agent8.jar` starts the Java agents it needs itself. Without `--replace`, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
 
 For many hosts, the Ansible playbook runs the same script and needs no Python on the hosts:
 

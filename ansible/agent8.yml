@@ -14,6 +14,7 @@
     agent8_replace: ""         # path of the agent.jar the host runs today
     agent8_dir: /opt/agent8
     agent8_java: ""            # default: $JAVA_HOME/bin/java, then java on PATH
+    agent8_target: ""          # build to install: 8, 11 or 17 (default: from the host's Java)
     agent8_from: ""            # offline: directory on the host with the agent8 jar(s) and jvmdg.jar
     agent8_restart: ""         # command that restarts the agent, run after the swap
   tasks:
@@ -24,6 +25,7 @@
         {% if agent8_version %}--version {{ agent8_version | quote }}{% endif %}
         {% if agent8_replace %}--replace {{ agent8_replace | quote }}{% endif %}
         {% if agent8_java %}--java {{ agent8_java | quote }}{% endif %}
+        {% if agent8_target %}--target {{ agent8_target | quote }}{% endif %}
         {% if agent8_from %}--from {{ agent8_from | quote }}{% endif %}
       register: agent8_install
       changed_when: true

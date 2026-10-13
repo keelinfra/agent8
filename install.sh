@@ -14,10 +14,11 @@
 #   --dir DIR        where to install (default /opt/agent8)
 #   --from DIR       offline: take the agent8 jar and jvmdg.jar from DIR, download nothing
 #   --java PATH      java to use (default $JAVA_HOME/bin/java, then java on PATH)
+#   --target N       which build to install: 8, 11 or 17 (default: from the host's Java)
 #   --repo URL       release source (default https://github.com/keelinfra/agent8)
 set -e
 
-URL= VERSION= REPLACE= DIR=/opt/agent8 FROM= JAVA= REPO=https://github.com/keelinfra/agent8
+URL= TARGET= VERSION= REPLACE= DIR=/opt/agent8 FROM= JAVA= REPO=https://github.com/keelinfra/agent8
 while [ $# -gt 0 ]; do
     case $1 in
         --url) URL=$2; shift 2 ;;
@@ -26,8 +27,9 @@ while [ $# -gt 0 ]; do
         --dir) DIR=$2; shift 2 ;;
         --from) FROM=$2; shift 2 ;;
         --java) JAVA=$2; shift 2 ;;
+        --target) TARGET=$2; shift 2 ;;
         --repo) REPO=$2; shift 2 ;;
-        -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
         *) echo "agent8: unknown option $1 (see --help)" >&2; exit 2 ;;
     esac
 done
@@ -54,6 +56,12 @@ if [ "$JMAJOR" -ge 17 ] 2>/dev/null; then ASSET=agent8-java17.jar
 elif [ "$JMAJOR" -ge 11 ] 2>/dev/null; then ASSET=agent8-java11.jar
 else ASSET=agent8.jar
 fi
+case $TARGET in
+    '') ;;
+    8) ASSET=agent8.jar ;;
+    11|17) ASSET=agent8-java$TARGET.jar ;;
+    *) die "--target must be 8, 11 or 17" ;;
+esac
 WANT=$ASSET
 
 WORK=${TMPDIR:-/tmp}/agent8.$$
@@ -77,7 +85,7 @@ release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) and 
 
 # agent8.jar and jvmdg.jar
 if [ -n "$FROM" ]; then
-    [ -f "$FROM/$ASSET" ] || ASSET=agent8.jar
+    [ -f "$FROM/$ASSET" ] || [ -n "$TARGET" ] || ASSET=agent8.jar
     cp "$FROM/$ASSET" "$WORK/agent8.jar" && cp "$FROM/jvmdg.jar" "$WORK/" ||
         die "no $ASSET and jvmdg.jar in $FROM"
 else
