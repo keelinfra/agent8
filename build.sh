@@ -84,11 +84,11 @@ fi
 mkdir -p "$WORK/agent8/agent8-compat"
 javac -nowarn --release 8 -d "$WORK/agent8/agent8-compat" $(find compat -name "*.java")
 javac -nowarn --release 8 -cp "$WORK/deps/asm.jar:$WORK/deps/asm-commons.jar:$WORK/deps/asm-tree.jar:$WORK/agent.jar" -d "$WORK/agent8" \
-    src/io/jenkins/agent8/*.java
+    src/io/keelinfra/agent8/*.java
 (cd "$WORK/agent8" && for a in asm asm-commons asm-tree; do unzip -qo "$WORK/deps/$a.jar" 'org/*'; done)
 
 # 4. Pin serialVersionUIDs once; downgrade per target.
-java -cp "$WORK/agent8" io.jenkins.agent8.Agent8 "$WORK/agent-patched.jar" "$WORK/agent-pinned.jar"
+java -cp "$WORK/agent8" io.keelinfra.agent8.Agent8 "$WORK/agent-patched.jar" "$WORK/agent-pinned.jar"
 cp "$WORK/deps/jvmdg.jar" "$DIST/jvmdg.jar"
 
 for target in "${TARGETS[@]}"; do
@@ -100,7 +100,7 @@ for target in "${TARGETS[@]}"; do
     out=$DIST/$jar
     java -jar "$WORK/deps/jvmdg.jar" -c $cv downgrade -t "$WORK/agent-pinned.jar" "$WORK/agent-dg-$target.jar" 2>&1 |
         grep -v 'org/osgi' || true
-    java -jar "$WORK/deps/jvmdg.jar" -c $cv shade -p io/jenkins/remoting/jvmdg -t "$WORK/agent-dg-$target.jar" "$out" 2>&1 |
+    java -jar "$WORK/deps/jvmdg.jar" -c $cv shade -p io/keelinfra/agent8/jvmdg -t "$WORK/agent-dg-$target.jar" "$out" 2>&1 |
         grep -v 'org/osgi' || true
 
     # 5. Add the Java agent and the drop-in launcher to the same jar.
@@ -114,7 +114,7 @@ bad = [n for n in src.namelist() if n.endswith(".class") and not n.endswith("mod
 if bad:
     sys.exit("classes above Java %s in %s: %s" % (target, jar, bad[:5]))
 lines = [l for l in src.read("META-INF/MANIFEST.MF").decode().splitlines() if l and not l.startswith("Main-Class:")]
-lines += ["Main-Class: io.jenkins.agent8.Main", "Premain-Class: io.jenkins.agent8.Agent8", "Can-Retransform-Classes: true",
+lines += ["Main-Class: io.keelinfra.agent8.Main", "Premain-Class: io.keelinfra.agent8.Agent8", "Can-Retransform-Classes: true",
           "Agent8-Remoting-Version: " + version, "Agent8-Target-Java: " + target]
 tmp = jar + ".tmp"
 with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
