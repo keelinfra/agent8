@@ -17,6 +17,7 @@
 #   --target N       which build to install: 8, 11 or 17 (default: from the host's Java)
 #   --repo URL       release source (default https://github.com/keelinfra/agent8)
 #   --cacert FILE    CA bundle for curl/wget, when the host's own bundle is too old
+#   --restore PATH   undo --replace: put back PATH.before-agent8 and remove jvmdg.jar
 #
 # Old hosts often have a CA bundle too old for github.com. If curl/wget cannot verify a
 # download, the script downloads it with Java instead, which has its own trust store.
@@ -29,7 +30,7 @@ if (eval 'test "$(echo x)" = x') 2>/dev/null; then :; else
 fi
 set -e
 
-URL= CACERT= TARGET= VERSION= REPLACE= DIR=/opt/agent8 FROM= JAVA= REPO=https://github.com/keelinfra/agent8
+URL='' RESTORE='' CACERT='' TARGET='' VERSION='' REPLACE='' DIR=/opt/agent8 FROM='' JAVA='' REPO=https://github.com/keelinfra/agent8
 while [ $# -gt 0 ]; do
     case $1 in
         --url) URL=$2; shift 2 ;;
@@ -41,18 +42,37 @@ while [ $# -gt 0 ]; do
         --target) TARGET=$2; shift 2 ;;
         --repo) REPO=$2; shift 2 ;;
         --cacert) CACERT=$2; shift 2 ;;
-        -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+        --restore) RESTORE=$2; shift 2 ;;
+        -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
         *) echo "agent8: unknown option $1 (see --help)" >&2; exit 2 ;;
     esac
 done
 
 die() { echo "agent8: $*" >&2; exit 1; }
 say() { echo "agent8: $*"; }
+# Portable to Bourne-derived shells on AIX, Solaris and HP-UX: no `command -v`, no `!`,
+# no head/tail options, no GNU-only flags. CI runs shellcheck -s sh on this file.
+have() { type "$1" >/dev/null 2>&1; }
+on_path() { # name -> prints the first executable on PATH
+    old_ifs=$IFS; IFS=:
+    for d in $PATH; do
+        if [ -n "$d" ] && [ -f "$d/$1" ] && [ -x "$d/$1" ]; then IFS=$old_ifs; echo "$d/$1"; return 0; fi
+    done
+    IFS=$old_ifs; return 1
+}
+
+if [ -n "$RESTORE" ]; then
+    [ -f "$RESTORE.before-agent8" ] || die "no $RESTORE.before-agent8 to restore"
+    mv "$RESTORE.before-agent8" "$RESTORE"
+    rm -f "$(dirname "$RESTORE")/jvmdg.jar"
+    say "restored the original $RESTORE; restart the agent with its usual command"
+    exit 0
+fi
 
 # Java
 if [ -z "$JAVA" ]; then
     if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then JAVA=$JAVA_HOME/bin/java
-    else JAVA=$(command -v java 2>/dev/null) || die "no java found; pass --java /path/to/bin/java"
+    else JAVA=$(on_path java) || die "no java found; pass --java /path/to/bin/java"
     fi
 fi
 [ -x "$JAVA" ] || die "$JAVA is not executable"
@@ -80,9 +100,9 @@ mkdir "$WORK" || die "cannot create $WORK"
 trap 'rm -rf "$WORK"' 0
 
 fetch() { # url file -> 0 if downloaded
-    if command -v curl >/dev/null 2>&1; then
+    if have curl; then
         curl -fsSL ${CACERT:+--cacert "$CACERT"} -o "$2" "$1" 2>/dev/null && return 0
-    elif command -v wget >/dev/null 2>&1; then
+    elif have wget; then
         wget -q ${CACERT:+--ca-certificate="$CACERT"} -O "$2" "$1" 2>/dev/null && return 0
     fi
     java_fetch "$1" "$2"
@@ -147,8 +167,9 @@ get_release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) 
 # The agent8 jar (kept as $WORK/agent8.jar) and jvmdg.jar
 if [ -n "$FROM" ]; then
     [ -f "$FROM/$ASSET" ] || [ -n "$TARGET" ] || ASSET=agent8-java8.jar
-    cp "$FROM/$ASSET" "$WORK/agent8.jar" && cp "$FROM/jvmdg.jar" "$WORK/" ||
+    if cp "$FROM/$ASSET" "$WORK/agent8.jar" && cp "$FROM/jvmdg.jar" "$WORK/"; then :; else
         die "no $ASSET and jvmdg.jar in $FROM"
+    fi
 else
     if [ -z "$VERSION" ] && [ -n "$URL" ]; then
         # The controller's agent.jar names its remoting version; any agent8 jar can read it.
@@ -159,7 +180,7 @@ else
         say "controller uses remoting $VERSION"
     fi
     if [ -n "$VERSION" ]; then
-        if ! release "remoting-$VERSION"; then
+        if release "remoting-$VERSION"; then :; else
             say "no agent8 build for remoting $VERSION yet; using the latest build"
             release latest || die "cannot download from $REPO; try --cacert FILE, or download the release files elsewhere and use --from DIR"
         fi
@@ -170,7 +191,7 @@ fi
 
 # Check that this Java runs it before touching anything.
 # (No tail -n or head -n: Solaris's do not support them.)
-if ! "$JAVA" -jar "$WORK/agent8.jar" -version > "$WORK/version.out" 2>&1; then
+if "$JAVA" -jar "$WORK/agent8.jar" -version > "$WORK/version.out" 2>&1; then :; else
     cat "$WORK/version.out" >&2
     die "$ASSET does not start with $JAVA (output above)"
 fi
@@ -184,12 +205,16 @@ say "installed $DIR/agent8.jar and $DIR/jvmdg.jar"
 if [ -n "$REPLACE" ]; then
     target_dir=$(dirname "$REPLACE")
     [ -d "$target_dir" ] || die "$target_dir does not exist"
+    # Copy next to the target, then rename over it: a running agent keeps the old file
+    # open and is not disturbed. The original jar is kept once, on the first install.
+    cp "$WORK/agent8.jar" "$REPLACE.agent8-new"
+    cp "$WORK/jvmdg.jar" "$target_dir/jvmdg.jar.agent8-new"
     if [ -f "$REPLACE" ] && [ ! -f "$REPLACE.before-agent8" ]; then
-        cp -p "$REPLACE" "$REPLACE.before-agent8"
-        say "kept the old jar as $REPLACE.before-agent8"
+        mv "$REPLACE" "$REPLACE.before-agent8"
+        say "kept the original jar as $REPLACE.before-agent8 (undo: --restore $REPLACE)"
     fi
-    cp "$WORK/agent8.jar" "$REPLACE"
-    cp "$WORK/jvmdg.jar" "$target_dir/jvmdg.jar"
+    mv "$REPLACE.agent8-new" "$REPLACE"
+    mv "$target_dir/jvmdg.jar.agent8-new" "$target_dir/jvmdg.jar"
     say "replaced $REPLACE; restart the agent with its usual command"
 else
     say "start the agent as usual, with this jar:"
