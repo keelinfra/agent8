@@ -88,7 +88,7 @@ check "install: picked $EXPECT_JAR for this Java" docker exec agent8-it sh -c \
 check "install: old jar kept" docker exec agent8-it test -f /opt/jenkins/agent.jar.before-agent8
 check "install: jvmdg.jar next to the jar" docker exec agent8-it test -f /opt/jenkins/jvmdg.jar
 check "install: --remoting-version reads the controller jar" test "$(docker exec agent8-it /opt/jdk8/bin/java \
-    -cp /opt/jenkins/agent.jar io.jenkins.agent8.Main --remoting-version /opt/jenkins/agent.jar.before-agent8)" = \
+    -cp /opt/jenkins/agent.jar io.keelinfra.agent8.Main --remoting-version /opt/jenkins/agent.jar.before-agent8)" = \
     "$(unzip -p "$T/agent.jar" META-INF/MANIFEST.MF | sed -n 's/^Version: *//p' | tr -d '\r')"
 
 if [[ -n ${BASIC:-} ]]; then

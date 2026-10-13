@@ -215,7 +215,9 @@ else
         release latest || die "cannot download from $REPO; try --cacert FILE, or download the release files elsewhere and use --from DIR"
         fetch "${URL%/}/jnlpJars/agent.jar" "$WORK/controller-agent.jar" ||
             die "cannot download ${URL%/}/jnlpJars/agent.jar"
-        VERSION=$("$JAVA" -cp "$WORK/agent8.jar" io.jenkins.agent8.Main --remoting-version "$WORK/controller-agent.jar")
+        # (Releases before the package rename have io.jenkins.agent8.Main.)
+        VERSION=$("$JAVA" -cp "$WORK/agent8.jar" io.keelinfra.agent8.Main --remoting-version "$WORK/controller-agent.jar" 2>/dev/null ||
+            "$JAVA" -cp "$WORK/agent8.jar" io.jenkins.agent8.Main --remoting-version "$WORK/controller-agent.jar")
         say "controller uses remoting $VERSION"
     fi
     TAG=latest
