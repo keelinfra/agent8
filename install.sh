@@ -56,7 +56,7 @@ if [ -z "$JAVA" ]; then
     fi
 fi
 [ -x "$JAVA" ] || die "$JAVA is not executable"
-JV=$("$JAVA" -version 2>&1 | sed -n 's/.*version "\([^"]*\)".*/\1/p' | head -n 1)
+JV=$("$JAVA" -version 2>&1 | sed -n 's/.*version "\([^"]*\)".*/\1/p' | sed -n '1p')
 say "using $JAVA ($JV)"
 case $JV in
     1.[0-7]*) die "Java $JV is too old; agent8 needs Java 8 or newer" ;;
@@ -169,8 +169,12 @@ else
 fi
 
 # Check that this Java runs it before touching anything.
-GOT=$("$JAVA" -jar "$WORK/agent8.jar" -version 2>/dev/null | tail -n 1) ||
-    die "$ASSET does not start with $JAVA"
+# (No tail -n or head -n: Solaris's do not support them.)
+if ! "$JAVA" -jar "$WORK/agent8.jar" -version > "$WORK/version.out" 2>&1; then
+    cat "$WORK/version.out" >&2
+    die "$ASSET does not start with $JAVA (output above)"
+fi
+GOT=$(sed -n '$p' "$WORK/version.out")
 say "$ASSET runs remoting $GOT on this host"
 
 mkdir -p "$DIR"
