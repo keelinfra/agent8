@@ -28,13 +28,13 @@ curl -fsSLO https://raw.githubusercontent.com/keelinfra/agent8/main/install.sh
 sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 ```
 
-`install.sh` asks the controller for its remoting version, downloads the matching agent8 jar for the host's Java (`agent8-java8.jar`, `agent8-java11.jar` or `agent8-java17.jar`) and `jvmdg.jar` from this repository's releases, checks that they start with the host's Java, and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
+`install.sh` asks the controller for its remoting version, downloads the matching agent8 jar for the host's Java (`agent8-java8.jar`, `agent8-java11.jar` or `agent8-java17.jar`) and `jvmdg.jar` from this repository's releases, checks them against the release's `sha256sums.txt` (with `sha256sum`, `shasum`, `digest` or `openssl`, or with Java when the host has none of these), checks that they start with the host's Java, and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
 
 ```sh
 java -jar /path/to/agent.jar -url https://jenkins.example.com/ -secret <secret> -name <node> -workDir /srv/jenkins
 ```
 
-Nothing else changes: the agent8 jar starts the Java agents it needs itself. With `--replace` it writes only next to the old jar, so it runs as the agent's own user; without it, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars and `jvmdg.jar` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options.
+Nothing else changes: the agent8 jar starts the Java agents it needs itself. With `--replace` it writes only next to the old jar, so it runs as the agent's own user; without it, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars, `jvmdg.jar` and `sha256sums.txt` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options.
 
 Old hosts often have a CA bundle too old to verify github.com (`curl: (60) SSL certificate problem`). Do not turn verification off. `install.sh` downloads the release files with Java's own trust store when curl or wget cannot verify them; to fetch `install.sh` itself, copy it from a current machine (`scp install.sh host:`), or point curl at a current bundle (`curl --cacert /path/to/cacert.pem ...`, also `install.sh --cacert FILE`). Fully offline hosts use `--from DIR`. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
 
@@ -89,13 +89,13 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
 ## Tests
 
 - `test/serialization.sh`: objects written on Java 21 are read on Java 8.
-- `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11), starts it with the usual command against a running controller and checks Pipeline builds, abort, agent restart during a build, and the script console.
+- `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11), starts it with the usual command against a running controller and checks Pipeline builds, a Git checkout (JGit, i.e. plugin code from the controller running on old Java), `withCredentials`, abort, agent restart during a build, the script console, and `--replace`/`--restore`. With `BASIC=1` it runs against a bare controller (core only, freestyle shell build), for older Jenkins lines whose plugins no longer install.
 
 CI runs both weekly against the latest LTS and weekly Jenkins.
 
 ## Releasing
 
-Run the **Release** workflow (Actions → Release → Run workflow). By default it builds and tests the current Jenkins LTS and weekly, then publishes one release per remoting version with all three jars and `sha256sums.txt`; list other Jenkins image tags to release older versions, or tick *dry run* to build and test only. CI itself does not publish.
+Run the **Release** workflow (Actions → Release → Run workflow). By default it builds and tests the current Jenkins LTS and weekly, then publishes one release per remoting version with all three jars and `sha256sums.txt`; list other Jenkins image tags to release older versions, or tick *dry run* to build and test only. Older Jenkins lines whose plugins no longer install (for example `2.462.3-lts-jdk17`) go in the *basic* field: they are tested against a bare controller with a freestyle shell build, and their release notes say so. CI itself does not publish; a weekly *Remoting check* workflow opens an issue when the current LTS or weekly ships a remoting version that has no release yet.
 
 ## Known gaps
 

@@ -8,6 +8,9 @@ on:
       jenkins:
         description: Jenkins image tags, space separated (e.g. "lts-jdk21 latest-jdk21 2.541.3-lts-jdk21")
         default: lts-jdk21 latest-jdk21
+      basic:
+        description: Older Jenkins image tags whose plugins no longer install, tested with a bare controller (freestyle shell build), e.g. "2.462.3-lts-jdk17"
+        default: ''
       latest:
         description: The release built from this tag becomes "latest", install.sh's fallback
         default: lts-jdk21
@@ -28,10 +31,15 @@ jobs:
       - id: list
         env:
           JENKINS: ${{ inputs.jenkins }}
-        run: echo "jenkins=$(printf '%s\n' $JENKINS | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+          BASIC: ${{ inputs.basic }}
+        run: |
+          {
+            for t in $JENKINS; do jq -nc --arg t "$t" '{tag: $t, basic: ""}'; done
+            for t in $BASIC; do jq -nc --arg t "$t" '{tag: $t, basic: "1"}'; done
+          } | jq -sc . | sed 's/^/jenkins=/' >> "$GITHUB_OUTPUT"
 
   release:
-    name: Jenkins ${{ matrix.jenkins }}
+    name: Jenkins ${{ matrix.jenkins.tag }}${{ matrix.jenkins.basic && ' (bare controller)' || '' }}
     needs: versions
     runs-on: ubuntu-latest
     permissions:
@@ -41,6 +49,8 @@ jobs:
       max-parallel: 1  # two Jenkins versions can share a remoting version, so one release
       matrix:
         jenkins: ${{ fromJSON(needs.versions.outputs.jenkins) }}
+    env:
+      BASIC: ${{ matrix.jenkins.basic }}
     steps:
       - uses: actions/checkout@v5
 
@@ -51,7 +61,8 @@ jobs:
 
       - name: Start controller
         run: |
-          docker build --progress=plain -t controller --build-arg JENKINS_TAG=${{ matrix.jenkins }} -f test/Dockerfile.controller test
+          if [ -n "$BASIC" ]; then plugins=(--build-arg PLUGINS=); else plugins=(); fi
+          docker build --progress=plain -t controller --build-arg JENKINS_TAG=${{ matrix.jenkins.tag }} "${plugins[@]}" -f test/Dockerfile.controller test
           docker run -d --name controller --network host controller
           for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
           curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
@@ -98,7 +109,9 @@ jobs:
         run: |
           V=$(unzip -p dist/agent8-java8.jar META-INF/MANIFEST.MF | sed -n 's/^Agent8-Remoting-Version: *//p' | tr -d '\r')
           tag=remoting-$V
-          notes="agent8 for Jenkins remoting $V (tested with Jenkins $JENKINS_VERSION), built from ${GITHUB_SHA::7}.
+          if [ -n "$BASIC" ]; then tested="tested with Jenkins $JENKINS_VERSION: connect, freestyle shell build, artifacts; no Pipeline or plugin tests"
+          else tested="tested with Jenkins $JENKINS_VERSION"; fi
+          notes="agent8 for Jenkins remoting $V ($tested), built from ${GITHUB_SHA::7}.
 
           | Host Java | Jar |
           |---|---|
@@ -116,7 +129,7 @@ jobs:
           else
             gh release create "$tag" dist/*.jar dist/sha256sums.txt --title "agent8 for remoting $V" --notes "$notes"
           fi
-          if [ "${{ matrix.jenkins }}" = "${{ inputs.latest }}" ]; then gh release edit "$tag" --latest; fi
+          if [ "${{ matrix.jenkins.tag }}" = "${{ inputs.latest }}" ]; then gh release edit "$tag" --latest; fi
 
       - name: Install from the published release
         if: ${{ !inputs.dry_run }}
