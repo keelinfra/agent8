@@ -37,15 +37,22 @@ jobs:
           - name: OpenJ9 8
             jdk: ibm-semeru-runtimes:open-8-jdk
             os: ibm-semeru-runtimes:open-8-jdk
-          # Java 11 build (for hosts capped at 11, such as Solaris): smoke test on LTS only.
+          # Java 11 and 17 builds (for hosts capped at 11, such as Solaris, or at 17): on LTS only.
           - name: HotSpot 11
             jdk: eclipse-temurin:11-jdk
             os: eclipse-temurin:11-jdk
             java: '11'
             jar: agent8-java11.jar
+          - name: HotSpot 17
+            jdk: eclipse-temurin:17-jdk
+            os: eclipse-temurin:17-jdk
+            java: '17'
+            jar: agent8-java17.jar
         exclude:
           - jenkins: latest-jdk21
             agent: {name: HotSpot 11, jdk: eclipse-temurin:11-jdk, os: eclipse-temurin:11-jdk, java: '11', jar: agent8-java11.jar}
+          - jenkins: latest-jdk21
+            agent: {name: HotSpot 17, jdk: eclipse-temurin:17-jdk, os: eclipse-temurin:17-jdk, java: '17', jar: agent8-java17.jar}
     steps:
       - uses: actions/checkout@v5
 
@@ -62,8 +69,7 @@ jobs:
           curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
           echo "JENKINS_VERSION=$(curl -fsSI localhost:8080/login | sed -n 's/^X-Jenkins: *//Ip' | tr -d '\r')" >> "$GITHUB_ENV"
 
-      # agent8-java8.jar, agent8-java11.jar and agent8-java17.jar; the Java 17 build
-      # is only built, not tested yet.
+      # agent8-java8.jar, agent8-java11.jar and agent8-java17.jar.
       - name: Build agent8 jars from the controller's agent.jar
         run: ./build.sh agent.jar 8 11 17
 
