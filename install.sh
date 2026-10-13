@@ -74,7 +74,12 @@ fetch() { # url file -> 0 if downloaded
     else die "neither curl nor wget found; download the release files and use --from DIR"
     fi
 }
-release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) and jvmdg.jar into $WORK
+release() { # tag -> as get_release, retried: assets are briefly missing while a release is re-published
+    get_release "$1" && return 0
+    sleep 5; get_release "$1" && return 0
+    sleep 15; get_release "$1"
+}
+get_release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) and jvmdg.jar into $WORK
     if [ "$1" = latest ]; then base=$REPO/releases/latest/download; else base=$REPO/releases/download/$1; fi
     fetch "$base/jvmdg.jar" "$WORK/jvmdg.jar" || return 1
     ASSET=$WANT
