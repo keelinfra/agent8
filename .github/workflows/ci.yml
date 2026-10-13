@@ -38,6 +38,15 @@ jobs:
           - name: OpenJ9 8
             jdk: ibm-semeru-runtimes:open-8-jdk
             os: ibm-semeru-runtimes:open-8-jdk
+          # Java 11 build (for hosts capped at 11, such as Solaris): smoke test on LTS only.
+          - name: HotSpot 11
+            jdk: eclipse-temurin:11-jdk
+            os: eclipse-temurin:11-jdk
+            java: '11'
+            jar: agent8-java11.jar
+        exclude:
+          - jenkins: latest-jdk21
+            agent: {name: HotSpot 11, jdk: eclipse-temurin:11-jdk, os: eclipse-temurin:11-jdk, java: '11', jar: agent8-java11.jar}
     steps:
       - uses: actions/checkout@v5
 
@@ -54,8 +63,10 @@ jobs:
           curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
           echo "JENKINS_VERSION=$(curl -fsSI localhost:8080/login | sed -n 's/^X-Jenkins: *//Ip' | tr -d '\r')" >> "$GITHUB_ENV"
 
-      - name: Build agent8.jar from the controller's agent.jar
-        run: ./build.sh agent.jar
+      # agent8.jar (Java 8), agent8-java11.jar and agent8-java17.jar; the Java 17 build
+      # is only built, not tested yet.
+      - name: Build agent8 jars from the controller's agent.jar
+        run: ./build.sh agent.jar 8 11 17
 
       - name: Serialization test
         run: test/serialization.sh
@@ -67,6 +78,8 @@ jobs:
         env:
           JDK8_IMAGE: ${{ matrix.agent.jdk }}
           AGENT_IMAGE: ${{ matrix.agent.os }}
+          EXPECT_JAVA: ${{ matrix.agent.java || '1.8' }}
+          EXPECT_JAR: ${{ matrix.agent.jar || 'agent8.jar' }}
 
       - name: Controller log
         if: failure()
@@ -91,11 +104,11 @@ jobs:
           Install: \`sh install.sh --url <controller>\`, see the README.
           jvmdg.jar is JvmDowngrader 2.0.1, unmodified, LGPL-2.1."
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/agent8.jar dist/jvmdg.jar --clobber
+            gh release upload "$tag" dist/*.jar --clobber
             gh release edit "$tag" --notes "$notes"
           else
-            gh release create "$tag" dist/agent8.jar dist/jvmdg.jar --title "agent8 for remoting $V" --notes "$notes" ||
-              gh release upload "$tag" dist/agent8.jar dist/jvmdg.jar --clobber
+            gh release create "$tag" dist/*.jar --title "agent8 for remoting $V" --notes "$notes" ||
+              gh release upload "$tag" dist/*.jar --clobber
           fi
           # "latest" (install.sh's fallback) follows the LTS line.
           if [ "${{ matrix.jenkins }}" = lts-jdk21 ]; then gh release edit "$tag" --latest; fi

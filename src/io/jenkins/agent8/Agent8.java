@@ -47,8 +47,8 @@ public final class Agent8 implements ClassFileTransformer {
 
     @Override
     public byte[] transform(ClassLoader loader, String name, Class<?> redefined, ProtectionDomain pd, byte[] bytes) {
-        if (bytes == null || bytes.length < 8 || majorVersion(bytes) <= 52) {
-            return null;
+        if (bytes == null || bytes.length < 8 || majorVersion(bytes) <= RUNTIME_CLASS_VERSION) {
+            return null; // JvmDowngrader leaves it alone
         }
         try {
             return pinSerialVersionUID(bytes);
@@ -56,6 +56,13 @@ public final class Agent8 implements ClassFileTransformer {
             System.err.println("[agent8] cannot pin serialVersionUID of " + name + ": " + e);
             return null;
         }
+    }
+
+    /** Class file version of this JVM: 52 on Java 8, 55 on Java 11. */
+    static final int RUNTIME_CLASS_VERSION = runtimeClassVersion(System.getProperty("java.specification.version"));
+
+    static int runtimeClassVersion(String spec) {
+        return 44 + Integer.parseInt(spec.startsWith("1.") ? spec.substring(2) : spec);
     }
 
     static int majorVersion(byte[] bytes) {

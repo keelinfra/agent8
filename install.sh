@@ -1,6 +1,7 @@
 #!/bin/sh
-# Installs agent8 on a build host that only has Java 8, and optionally swaps
-# it in for the agent.jar the host already uses. POSIX sh: runs on RHEL/CentOS 6,
+# Installs agent8 on a build host that only has old Java (8, 11 or 17), and optionally
+# swaps it in for the agent.jar the host already uses. It picks the build made for the
+# host's Java: agent8.jar (Java 8), agent8-java11.jar or agent8-java17.jar. POSIX sh: runs on RHEL/CentOS 6,
 # AIX (ksh), Solaris and HP-UX.
 #
 #   sh install.sh --url https://jenkins.example.com/ [--replace /path/to/agent.jar]
@@ -11,7 +12,7 @@
 #   --replace PATH   swap the agent.jar at PATH for agent8 (a backup is kept), so the
 #                    existing start command keeps working unchanged
 #   --dir DIR        where to install (default /opt/agent8)
-#   --from DIR       offline: take agent8.jar and jvmdg.jar from DIR, download nothing
+#   --from DIR       offline: take the agent8 jar and jvmdg.jar from DIR, download nothing
 #   --java PATH      java to use (default $JAVA_HOME/bin/java, then java on PATH)
 #   --repo URL       release source (default https://github.com/keelinfra/agent8)
 set -e
@@ -26,7 +27,7 @@ while [ $# -gt 0 ]; do
         --from) FROM=$2; shift 2 ;;
         --java) JAVA=$2; shift 2 ;;
         --repo) REPO=$2; shift 2 ;;
-        -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
         *) echo "agent8: unknown option $1 (see --help)" >&2; exit 2 ;;
     esac
 done
@@ -45,7 +46,15 @@ JV=$("$JAVA" -version 2>&1 | sed -n 's/.*version "\([^"]*\)".*/\1/p' | head -n 1
 say "using $JAVA ($JV)"
 case $JV in
     1.[0-7]*) die "Java $JV is too old; agent8 needs Java 8 or newer" ;;
+    1.*) JMAJOR=8 ;;
+    *) JMAJOR=$(echo "$JV" | sed 's/[^0-9].*//') ;;
 esac
+# The closest build at or below this Java; agent8.jar (Java 8) is the fallback.
+if [ "$JMAJOR" -ge 17 ] 2>/dev/null; then ASSET=agent8-java17.jar
+elif [ "$JMAJOR" -ge 11 ] 2>/dev/null; then ASSET=agent8-java11.jar
+else ASSET=agent8.jar
+fi
+WANT=$ASSET
 
 WORK=${TMPDIR:-/tmp}/agent8.$$
 mkdir "$WORK" || die "cannot create $WORK"
@@ -57,14 +66,20 @@ fetch() { # url file -> 0 if downloaded
     else die "neither curl nor wget found; download the release files and use --from DIR"
     fi
 }
-release() { # tag -> downloads agent8.jar and jvmdg.jar into $WORK
+release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) and jvmdg.jar into $WORK
     if [ "$1" = latest ]; then base=$REPO/releases/latest/download; else base=$REPO/releases/download/$1; fi
-    fetch "$base/agent8.jar" "$WORK/agent8.jar" && fetch "$base/jvmdg.jar" "$WORK/jvmdg.jar"
+    fetch "$base/jvmdg.jar" "$WORK/jvmdg.jar" || return 1
+    ASSET=$WANT
+    if [ "$ASSET" != agent8.jar ] && fetch "$base/$ASSET" "$WORK/agent8.jar"; then return 0; fi
+    ASSET=agent8.jar
+    fetch "$base/agent8.jar" "$WORK/agent8.jar"
 }
 
 # agent8.jar and jvmdg.jar
 if [ -n "$FROM" ]; then
-    cp "$FROM/agent8.jar" "$FROM/jvmdg.jar" "$WORK/" || die "no agent8.jar and jvmdg.jar in $FROM"
+    [ -f "$FROM/$ASSET" ] || ASSET=agent8.jar
+    cp "$FROM/$ASSET" "$WORK/agent8.jar" && cp "$FROM/jvmdg.jar" "$WORK/" ||
+        die "no $ASSET and jvmdg.jar in $FROM"
 else
     if [ -z "$VERSION" ] && [ -n "$URL" ]; then
         # The controller's agent.jar names its remoting version; the latest agent8.jar can read it.
@@ -87,7 +102,7 @@ fi
 # Check that this Java runs it before touching anything.
 GOT=$("$JAVA" -jar "$WORK/agent8.jar" -version 2>/dev/null | tail -n 1) ||
     die "agent8.jar does not start with $JAVA"
-say "agent8 runs remoting $GOT on this host"
+say "$ASSET runs remoting $GOT on this host"
 
 mkdir -p "$DIR"
 cp "$WORK/agent8.jar" "$WORK/jvmdg.jar" "$DIR/"

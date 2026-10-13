@@ -14,7 +14,7 @@
     agent8_replace: ""         # path of the agent.jar the host runs today
     agent8_dir: /opt/agent8
     agent8_java: ""            # default: $JAVA_HOME/bin/java, then java on PATH
-    agent8_from: ""            # offline: directory on the host with agent8.jar and jvmdg.jar
+    agent8_from: ""            # offline: directory on the host with the agent8 jar(s) and jvmdg.jar
     agent8_restart: ""         # command that restarts the agent, run after the swap
   tasks:
     - name: Install agent8 and swap the agent jar

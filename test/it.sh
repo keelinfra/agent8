@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Integration test: a Java 8 agent built from dist/ connects to a running controller
+# Integration test: an old-Java agent built from dist/ connects to a running controller
 # and runs Pipeline builds. The controller must allow anonymous script console access
 # and have the workflow-aggregator style plugins (see test/Dockerfile.controller).
 #
 #   JENKINS_URL   controller URL (default http://localhost:8080)
 #   AGENT_IMAGE   OS image for the agent (default centos:6)
-#   JDK8_IMAGE    image to copy the Java 8 runtime from (default eclipse-temurin:8-jdk)
+#   JDK8_IMAGE    image to copy the old Java runtime from (default eclipse-temurin:8-jdk)
+#   EXPECT_JAVA   java.version prefix the agent must report (default 1.8)
+#   EXPECT_JAR    dist/ jar install.sh must pick for that Java (default agent8.jar)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 URL=${JENKINS_URL:-http://localhost:8080}
 AGENT_IMAGE=${AGENT_IMAGE:-centos:6}
 JDK8_IMAGE=${JDK8_IMAGE:-eclipse-temurin:8-jdk}
+EXPECT_JAVA=${EXPECT_JAVA:-1.8}
+EXPECT_JAR=${EXPECT_JAR:-agent8.jar}
 T=$(mktemp -d)
 C=$T/cookies
 failures=0
@@ -71,6 +75,8 @@ curl -fsS -o "$T/agent.jar" "$URL/jnlpJars/agent.jar"
 docker exec agent8-it mkdir -p /opt/jenkins
 docker cp "$T/agent.jar" agent8-it:/opt/jenkins/agent.jar
 docker exec agent8-it sh /install.sh --from /dist --java /opt/jdk8/bin/java --replace /opt/jenkins/agent.jar
+check "install: picked $EXPECT_JAR for this Java" docker exec agent8-it sh -c \
+    "[ \"\$(md5sum < /dist/$EXPECT_JAR)\" = \"\$(md5sum < /opt/jenkins/agent.jar)\" ]"
 check "install: old jar kept" docker exec agent8-it test -f /opt/jenkins/agent.jar.before-agent8
 check "install: jvmdg.jar next to the jar" docker exec agent8-it test -f /opt/jenkins/jvmdg.jar
 check "install: --remoting-version reads the controller jar" test "$(docker exec agent8-it /opt/jdk8/bin/java \
@@ -107,7 +113,7 @@ check "restart: build succeeds after agent restart" test "$(result agent8-durabl
 
 printf 'println System.getProperty("java.version")\n' > "$T/console.groovy"
 out=$(post --data-urlencode "script@$T/console.groovy" "$URL/computer/agent8/scriptText")
-check "script console runs on Java 8 ($out)" test "${out:0:3}" = 1.8
+check "script console runs on Java $EXPECT_JAVA ($out)" test "${out:0:${#EXPECT_JAVA}}" = "$EXPECT_JAVA"
 
 transform_errors=$(docker exec agent8-it sh -c 'grep -c "Failed to transform\|\[agent8\]" /tmp/agent.log || true')
 check "no class transformation errors ($transform_errors)" test "$transform_errors" = 0
