@@ -1,0 +1,37 @@
+# Installs agent8 on legacy Jenkins build hosts and swaps it in for their agent.jar.
+# Runs install.sh with the script module, so the hosts need no Python.
+#
+#   ansible-playbook -i inventory ansible/agent8.yml \
+#     -e agent8_controller_url=https://jenkins.example.com/ \
+#     -e agent8_replace=/opt/jenkins/agent.jar \
+#     -e "agent8_restart='/etc/init.d/jenkins-agent restart'"
+- name: Install agent8
+  hosts: "{{ agent8_hosts | default('jenkins_legacy_agents') }}"
+  gather_facts: false
+  vars:
+    agent8_controller_url: ""  # match agent8 to this controller's remoting version
+    agent8_version: ""         # or give the remoting version directly
+    agent8_replace: ""         # path of the agent.jar the host runs today
+    agent8_dir: /opt/agent8
+    agent8_java: ""            # default: $JAVA_HOME/bin/java, then java on PATH
+    agent8_from: ""            # offline: directory on the host with agent8.jar and jvmdg.jar
+    agent8_restart: ""         # command that restarts the agent, run after the swap
+  tasks:
+    - name: Install agent8 and swap the agent jar
+      ansible.builtin.script: >-
+        ../install.sh --dir {{ agent8_dir | quote }}
+        {% if agent8_controller_url %}--url {{ agent8_controller_url | quote }}{% endif %}
+        {% if agent8_version %}--version {{ agent8_version | quote }}{% endif %}
+        {% if agent8_replace %}--replace {{ agent8_replace | quote }}{% endif %}
+        {% if agent8_java %}--java {{ agent8_java | quote }}{% endif %}
+        {% if agent8_from %}--from {{ agent8_from | quote }}{% endif %}
+      register: agent8_install
+      changed_when: true
+
+    - name: Show what was installed
+      ansible.builtin.debug:
+        var: agent8_install.stdout_lines
+
+    - name: Restart the agent
+      ansible.builtin.raw: "{{ agent8_restart }}"
+      when: agent8_restart | length > 0

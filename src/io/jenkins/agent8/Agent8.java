@@ -36,9 +36,13 @@ public final class Agent8 implements ClassFileTransformer {
 
     static final String COMPAT = "agent8-compat/";
 
+    /** Whether this Java agent was started, see {@link Main}. */
+    static volatile boolean active;
+
     public static void premain(String args, Instrumentation inst) throws IOException {
         inst.appendToBootstrapClassLoaderSearch(new JarFile(compatJar()));
         inst.addTransformer(new Agent8());
+        active = true;
     }
 
     @Override
