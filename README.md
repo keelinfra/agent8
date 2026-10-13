@@ -76,6 +76,10 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
 
 CI runs both weekly against the latest LTS and weekly Jenkins.
 
+## Releasing
+
+Run the **Release** workflow (Actions → Release → Run workflow). By default it builds and tests the current Jenkins LTS and weekly, then publishes one release per remoting version with all three jars and `sha256sums.txt`; list other Jenkins image tags to release older versions, or tick *dry run* to build and test only. CI itself does not publish.
+
 ## Known gaps
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run code on agents (git, Maven, Docker, credentials binding …) still need testing.
