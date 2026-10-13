@@ -9,3 +9,8 @@ javac -d "$T" test/SerialWrite.java && java -cp "$T" SerialWrite "$T/objects.bin
 javac -nowarn --release 8 -d "$T" test/SerialRead.java
 docker run --rm -v "$T:/t" -v "$PWD/dist:/dist:ro" "${JDK8_IMAGE:-eclipse-temurin:8-jdk}" \
     java -javaagent:/dist/${AGENT_JAR:-agent8-java8.jar} -cp /t SerialRead /t/objects.bin
+
+# Code from the controller runs downgraded; agent8 fixes JvmDowngrader stubs that differ from the JDK.
+javac -d "$T" --release 17 test/ReadNBytes.java
+docker run --rm -v "$T:/t" -v "$PWD/dist:/dist:ro" "${JDK8_IMAGE:-eclipse-temurin:8-jdk}" \
+    java -javaagent:/dist/${AGENT_JAR:-agent8-java8.jar} -javaagent:/dist/jvmdg.jar -cp /t ReadNBytes
