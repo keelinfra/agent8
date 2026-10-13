@@ -2,7 +2,7 @@
 # Installs agent8 on a build host that only has old Java (8, 11 or 17), and optionally
 # swaps it in for the agent.jar the host already uses. It picks the build made for the
 # host's Java: agent8-java8.jar, agent8-java11.jar or agent8-java17.jar; it is installed as agent8.jar. POSIX sh: runs on RHEL/CentOS 6,
-# AIX (ksh), Solaris and HP-UX.
+# AIX (ksh), Solaris (reruns itself with ksh on Solaris 10) and HP-UX.
 #
 #   sh install.sh --url https://jenkins.example.com/ [--replace /path/to/agent.jar]
 #
@@ -20,6 +20,13 @@
 #
 # Old hosts often have a CA bundle too old for github.com. If curl/wget cannot verify a
 # download, the script downloads it with Java instead, which has its own trust store.
+# Solaris 10's /bin/sh is a Bourne shell without $(...): rerun with a POSIX shell.
+if (eval 'test "$(echo x)" = x') 2>/dev/null; then :; else
+    for sh in /usr/xpg4/bin/sh /bin/ksh /usr/bin/ksh; do
+        if [ -x $sh ]; then exec $sh "$0" "$@"; fi
+    done
+    echo "agent8: run this script with ksh" >&2; exit 1
+fi
 set -e
 
 URL= CACERT= TARGET= VERSION= REPLACE= DIR=/opt/agent8 FROM= JAVA= REPO=https://github.com/keelinfra/agent8
