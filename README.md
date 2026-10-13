@@ -15,7 +15,7 @@ Experimental. CI tests every change, and weekly, against the current Jenkins LTS
 | AIX 7.1 / 7.2 with IBM Java 8 | Experimental: not yet run on real AIX |
 | Solaris, HP-UX with Java 8 | Experimental: not tested |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
-| Java 17 (`agent8-java17.jar`) | Built only, not tested yet |
+| Linux, HotSpot Java 17 (`agent8-java17.jar`) | Tested in CI against the current LTS |
 
 Java 8 is the main target. The same build also makes jars for hosts capped at Java 11 (Solaris SPARC and x86 stop at JDK 11, since JDK 15 dropped those ports) and Java 17.
 
@@ -90,7 +90,7 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
 ## Tests
 
 - `test/serialization.sh`: objects written on Java 21 are read on Java 8.
-- `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11), starts it with the usual command against a running controller and checks Pipeline builds, a Git checkout (JGit, i.e. plugin code from the controller running on old Java), `withCredentials`, abort, agent restart during a build, the script console, and `--replace`/`--restore`. With `BASIC=1` it runs against a bare controller (core only, freestyle shell build), for older Jenkins lines whose plugins no longer install.
+- `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11 and 17), starts it with the usual command against a running controller and checks Pipeline builds, a Git checkout (JGit, i.e. plugin code from the controller running on old Java), `withCredentials`, abort, agent restart during a build, the script console, and `--replace`/`--restore`. With `BASIC=1` it runs against a bare controller (core only, freestyle shell build), for older Jenkins lines whose plugins no longer install.
 
 CI runs both weekly against the latest LTS and weekly Jenkins.
 

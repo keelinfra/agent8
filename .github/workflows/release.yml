@@ -90,6 +90,15 @@ jobs:
           EXPECT_JAR: agent8-java11.jar
         run: test/serialization.sh && test/it.sh
 
+      - name: Test HotSpot 17
+        env:
+          JDK8_IMAGE: eclipse-temurin:17-jdk
+          AGENT_IMAGE: eclipse-temurin:17-jdk
+          AGENT_JAR: agent8-java17.jar
+          EXPECT_JAVA: '17'
+          EXPECT_JAR: agent8-java17.jar
+        run: test/serialization.sh && test/it.sh
+
       - name: Controller log
         if: failure()
         run: docker logs controller 2>&1 | tail -200
@@ -117,7 +126,7 @@ jobs:
           |---|---|
           | 8 and newer | agent8-java8.jar |
           | 11 and newer | agent8-java11.jar |
-          | 17 and newer | agent8-java17.jar (built, not yet tested) |
+          | 17 and newer | agent8-java17.jar |
 
           Install: \`sh install.sh --url <controller>\` picks the right jar, see the README.
           jvmdg.jar is JvmDowngrader 2.0.1, unmodified, LGPL-2.1. Checksums: sha256sums.txt."
