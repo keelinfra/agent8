@@ -2,5 +2,7 @@
 ARG JENKINS_TAG=lts-jdk21
 FROM jenkins/jenkins:${JENKINS_TAG}
 ENV JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+# Inbound agent port: any free one, since the runner may already use 50000 (the agent finds it over HTTP).
+ENV JENKINS_SLAVE_AGENT_PORT=0
 RUN jenkins-plugin-cli --plugins \
     workflow-job workflow-cps workflow-durable-task-step workflow-basic-steps pipeline-stage-step junit
