@@ -12,7 +12,7 @@
 [![CI](https://github.com/keelinfra/agent8/actions/workflows/ci.yml/badge.svg)](https://github.com/keelinfra/agent8/actions/workflows/ci.yml)
 [![Releases](https://img.shields.io/badge/releases-one%20per%20Jenkins%20version-blue)](https://github.com/keelinfra/agent8/releases)
 [![Host Java](https://img.shields.io/badge/host%20Java-8%20%7C%2011%20%7C%2017-blue)](#install)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
+[![License: MIT, bundled parts LGPL-2.1](https://img.shields.io/badge/license-MIT%20%2B%20LGPL--2.1%20parts-green)](#license)
 
 Run a **native Jenkins agent on Java 8**, connected to a current Jenkins controller that runs on Java 21 or newer.
 
@@ -22,7 +22,7 @@ Jenkins requires Java 21+ on the controller and on every agent. Build hosts that
 
 ## Status
 
-Experimental. CI tests every change, and weekly, against the current Jenkins LTS and weekly release.
+Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release; AIX, Solaris and HP-UX are still experimental.
 
 | Agent platform | Status |
 |---|---|
