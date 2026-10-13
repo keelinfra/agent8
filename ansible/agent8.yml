@@ -12,7 +12,7 @@
     agent8_controller_url: ""  # match agent8 to this controller's remoting version
     agent8_version: ""         # or give the remoting version directly
     agent8_replace: ""         # path of the agent.jar the host runs today
-    agent8_dir: /opt/agent8
+    agent8_dir: ""             # install dir (install.sh default /opt/agent8; with agent8_replace, unused unless set)
     agent8_java: ""            # default: $JAVA_HOME/bin/java, then java on PATH
     agent8_target: ""          # build to install: 8, 11 or 17 (default: from the host's Java)
     agent8_from: ""            # offline: directory on the host with the agent8 jar(s) and jvmdg.jar
@@ -20,7 +20,8 @@
   tasks:
     - name: Install agent8 and swap the agent jar
       ansible.builtin.script: >-
-        ../install.sh --dir {{ agent8_dir | quote }}
+        ../install.sh
+        {% if agent8_dir %}--dir {{ agent8_dir | quote }}{% endif %}
         {% if agent8_controller_url %}--url {{ agent8_controller_url | quote }}{% endif %}
         {% if agent8_version %}--version {{ agent8_version | quote }}{% endif %}
         {% if agent8_replace %}--replace {{ agent8_replace | quote }}{% endif %}
