@@ -20,7 +20,36 @@ jobs:
       - name: Installer and playbook syntax
         run: |
           sh -n install.sh
+          shellcheck -s sh install.sh
           pipx run --spec ansible-core ansible-playbook --syntax-check -i localhost, ansible/agent8.yml
+
+  windows:
+    name: Windows installer (Java 8)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Install from the latest release, replace and restore a jar
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory C:\agent | Out-Null
+          Set-Content C:\agent\agent.jar 'original'
+          .\install.ps1 -Dir C:\agent8 -Replace C:\agent\agent.jar
+          if ($LASTEXITCODE) { exit 1 }
+          if ((Get-Content C:\agent\agent.jar.before-agent8) -ne 'original') { throw 'original not kept' }
+          if (-not (Test-Path C:\agent\jvmdg.jar)) { throw 'jvmdg.jar missing' }
+          & java -jar C:\agent\agent.jar -version
+          if ($LASTEXITCODE) { throw 'agent8 does not start' }
+          # A second run must not overwrite the kept original.
+          .\install.ps1 -Dir C:\agent8 -Replace C:\agent\agent.jar
+          if ((Get-Content C:\agent\agent.jar.before-agent8) -ne 'original') { throw 'original overwritten' }
+          .\install.ps1 -Restore C:\agent\agent.jar
+          if ((Get-Content C:\agent\agent.jar) -ne 'original') { throw 'restore failed' }
+          if (Test-Path C:\agent\jvmdg.jar) { throw 'jvmdg.jar left behind' }
 
   build:
     name: Jenkins ${{ matrix.jenkins }}, ${{ matrix.agent.name }}

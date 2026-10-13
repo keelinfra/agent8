@@ -118,5 +118,13 @@ check "script console runs on Java $EXPECT_JAVA ($out)" test "${out:0:${#EXPECT_
 transform_errors=$(docker exec agent8-it sh -c 'grep -c "Failed to transform\|\[agent8\]" /tmp/agent.log || true')
 check "no class transformation errors ($transform_errors)" test "$transform_errors" = 0
 
+docker exec agent8-it pkill -f /opt/jenkins/agent.jar || true
+docker exec agent8-it sh /install.sh --from /dist --java /opt/jdk8/bin/java --replace /opt/jenkins/agent.jar
+check "reinstall: original jar not overwritten" docker exec agent8-it sh -c \
+    "[ \"\$(md5sum < /opt/jenkins/agent.jar.before-agent8)\" != \"\$(md5sum < /opt/jenkins/agent.jar)\" ]"
+docker exec agent8-it sh /install.sh --restore /opt/jenkins/agent.jar
+check "restore: stock agent.jar back" test "$(docker exec agent8-it sh -c 'md5sum < /opt/jenkins/agent.jar')" = "$(md5sum < "$T/agent.jar")"
+check "restore: jvmdg.jar removed" docker exec agent8-it sh -c '! test -e /opt/jenkins/jvmdg.jar'
+
 echo "$failures failure(s)"
 [[ $failures = 0 ]]
