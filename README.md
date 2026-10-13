@@ -1,4 +1,4 @@
-# Jenkins agent for Java 8
+# Agent8 for Jenkins
 
 Run a **native Jenkins agent on Java 8**, connected to a current Jenkins controller that runs on Java 21 or newer.
 
@@ -6,7 +6,14 @@ Jenkins requires Java 21+ on the controller and on every agent. Build hosts that
 
 ## Status
 
-Experimental. Tested in CI against the current Jenkins LTS and weekly release, with the agent on Temurin 8 in CentOS 6.10. Not yet tested on AIX with IBM Java 8.
+Experimental. CI tests every change, and weekly, against the current Jenkins LTS and weekly release.
+
+| Agent platform | Status |
+|---|---|
+| Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | Tested in CI on CentOS 6.10 |
+| Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI |
+| AIX 7.1 / 7.2 with IBM Java 8 | Experimental: not yet run on real AIX |
+| Solaris, HP-UX with Java 8 | Experimental: not tested |
 
 ## Usage
 
@@ -37,18 +44,19 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
 3. **`agent8.jar` is also a Java agent** that keeps Java serialization compatible with the controller:
    - Downgrading adds synthetic members, which changes the default `serialVersionUID` of classes that do not declare one. The controller would then reject every call. The agent pins the UID the controller computes, before downgrading. Records get UID 0.
    - It adds `java.util.CollSer`, the serial form of `List.of`, `Set.of`, `Map.of` and `Stream.toList()`, which Java 8 does not have.
+   - On OpenJ9 it adds a stand-in for HotSpot's internal `ClassLoader$ParallelLoaders`, which JvmDowngrader's `ClassLoader` stubs need.
 
 ## Tests
 
 - `test/serialization.sh`: objects written on Java 21 are read on Java 8.
-- `test/it.sh`: starts the agent in a CentOS 6 container with Java 8 against a running controller and checks Pipeline builds, abort, agent restart during a build, and the script console.
+- `test/it.sh`: starts the agent in a container with Java 8 (CentOS 6 with HotSpot, Ubuntu with OpenJ9) against a running controller and checks Pipeline builds, abort, agent restart during a build, and the script console.
 
 CI runs both weekly against the latest LTS and weekly Jenkins.
 
 ## Known gaps
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run code on agents (git, Maven, Docker, credentials binding …) still need testing.
-- AIX with IBM Java 8 is untested.
+- AIX with IBM Java 8 is untested on real hardware; OpenJ9 on Linux covers the JVM but not AIX itself.
 - The SSH launcher copies the controller's own `remoting.jar` to the agent; use an inbound agent for now.
 
 ## License
