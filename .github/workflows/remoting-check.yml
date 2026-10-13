@@ -1,0 +1,40 @@
+# Weekly: opens an issue when the current Jenkins LTS or weekly ships a remoting version
+# that has no agent8 release yet (install.sh would fall back to another version, and the
+# Remoting Version node monitor would take such agents offline). Fix: run the Release workflow.
+name: Remoting check
+
+on:
+  schedule:
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look for remoting versions without a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for tag in lts-jdk21 latest-jdk21; do
+            docker pull -q "jenkins/jenkins:$tag" >/dev/null
+            id=$(docker create "jenkins/jenkins:$tag")
+            docker cp "$id:/usr/share/jenkins/jenkins.war" jenkins.war
+            docker rm "$id" >/dev/null
+            jenkins=$(unzip -p jenkins.war META-INF/MANIFEST.MF | sed -n 's/^Jenkins-Version: *//p' | tr -d '\r')
+            remoting=$(unzip -l jenkins.war | sed -n 's|.*WEB-INF/lib/remoting-\(.*\)\.jar$|\1|p')
+            echo "jenkins/jenkins:$tag = Jenkins $jenkins, remoting $remoting"
+            if gh release view "remoting-$remoting" >/dev/null 2>&1; then continue; fi
+            title="No agent8 release for remoting $remoting"
+            if gh issue list --state open --search "\"$title\" in:title" --json number -q '.[].number' | grep -q .; then
+              echo "issue already open"; continue
+            fi
+            gh issue create --title "$title" --body "Jenkins $jenkins (\`jenkins/jenkins:$tag\`) ships remoting $remoting, which has no agent8 release. Run **Actions → Release → Run workflow** (default inputs build the current LTS and weekly).
+
+          Found by the weekly Remoting check workflow."
+          done

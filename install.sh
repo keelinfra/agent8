@@ -111,44 +111,76 @@ fetch() { # url file -> 0 if downloaded
 # tools/Fetch.java compiled for Java 8 (javac --release 8 -g:none), base64. It downloads
 # with Java's trust store, which is usually newer than an old host's CA bundle.
 FETCH_CLASS='
-yv66vgAAADQAcAoAAgADBwAEDAAFAAYBABBqYXZhL2xhbmcvT2JqZWN0AQAGPGluaXQ+AQADKClW
-BwAIAQAMamF2YS9uZXQvVVJMCgAHAAoMAAUACwEAFShMamF2YS9sYW5nL1N0cmluZzspVgoABwAN
-DAAOAA8BAA5vcGVuQ29ubmVjdGlvbgEAGigpTGphdmEvbmV0L1VSTENvbm5lY3Rpb247BwARAQAa
-amF2YS9uZXQvSHR0cFVSTENvbm5lY3Rpb24KABAAEwwAFAAVAQAac2V0SW5zdGFuY2VGb2xsb3dS
-ZWRpcmVjdHMBAAQoWilWCAAXAQAKVXNlci1BZ2VudAgAGQEADmFnZW50OC1pbnN0YWxsCgAQABsM
-ABwAHQEAEnNldFJlcXVlc3RQcm9wZXJ0eQEAJyhMamF2YS9sYW5nL1N0cmluZztMamF2YS9sYW5n
-L1N0cmluZzspVgoAEAAfDAAgACEBAA9nZXRSZXNwb25zZUNvZGUBAAMoKUkIACMBAAhMb2NhdGlv
-bgoAEAAlDAAmACcBAA5nZXRIZWFkZXJGaWVsZAEAJihMamF2YS9sYW5nL1N0cmluZzspTGphdmEv
-bGFuZy9TdHJpbmc7CgAHACkMAAUAKgEAIyhMamF2YS9uZXQvVVJMO0xqYXZhL2xhbmcvU3RyaW5n
-OylWCQAsAC0HAC4MAC8AMAEAEGphdmEvbGFuZy9TeXN0ZW0BAANlcnIBABVMamF2YS9pby9Qcmlu
-dFN0cmVhbTsHADIBABdqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcgoAMQADCgAxADUMADYANwEABmFw
-cGVuZAEALShMamF2YS9sYW5nL1N0cmluZzspTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOwgAOQEA
-BzogSFRUUCAKADEAOwwANgA8AQAcKEkpTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOwoAMQA+DAA/
-AEABAAh0b1N0cmluZwEAFCgpTGphdmEvbGFuZy9TdHJpbmc7CgBCAEMHAEQMAEUACwEAE2phdmEv
-aW8vUHJpbnRTdHJlYW0BAAdwcmludGxuCgAsAEcMAEgASQEABGV4aXQBAAQoSSlWCgAQAEsMAEwA
-TQEADmdldElucHV0U3RyZWFtAQAXKClMamF2YS9pby9JbnB1dFN0cmVhbTsHAE8BABhqYXZhL2lv
-L0ZpbGVPdXRwdXRTdHJlYW0KAE4ACgMAAQAACgBTAFQHAFUMAFYAVwEAE2phdmEvaW8vSW5wdXRT
-dHJlYW0BAARyZWFkAQAFKFtCKUkKAFkAWgcAWwwAXABdAQAUamF2YS9pby9PdXRwdXRTdHJlYW0B
-AAV3cml0ZQEAByhbQklJKVYKAFkAXwwAYAAGAQAFY2xvc2UIAGIBABQ6IHRvbyBtYW55IHJlZGly
-ZWN0cwcAZAEABUZldGNoAQAEQ29kZQEABG1haW4BABYoW0xqYXZhL2xhbmcvU3RyaW5nOylWAQAN
-U3RhY2tNYXBUYWJsZQcAagEAAltCBwBsAQATW0xqYXZhL2xhbmcvU3RyaW5nOwEACkV4Y2VwdGlv
-bnMHAG8BABNqYXZhL2xhbmcvRXhjZXB0aW9uACEAYwACAAAAAAACAAEABQAGAAEAZQAAABEAAQAB
-AAAABSq3AAGxAAAAAAAJAGYAZwACAGUAAAEjAAUACQAAAOK7AAdZKgMytwAJTAM9HAiiALMrtgAM
-wAAQTi0DtgASLRIWEhi2ABottgAeNgQVBBEBLKEAJhUEEQGQogAeLRIitgAkxgAVuwAHWSstEiK2
-ACS3AChMpwBnFQQRAMifACeyACu7ADFZtwAzKgMytgA0Eji2ADQVBLYAOrYAPbYAQQS4AEYttgBK
-OgW7AE5ZKgQytwBQOgYSUbwIOgcZBRkHtgBSWTYIngAQGQYZBwMVCLYAWKf/6RkGtgBesYQCAaf/
-TrIAK7sAMVm3ADMqAzK2ADQSYbYANLYAPbYAQQS4AEaxAAAAAQBoAAAALwAH/QANBwAHAf0ASgcA
-EAEr/gAXBwBTBwBZBwBpGf8ABQADBwBrBwAHAQAA+gAFAG0AAAAEAAEAbgAA
+yv66vgAAADQAnQoAAgADBwAEDAAFAAYBABBqYXZhL2xhbmcvT2JqZWN0AQAGPGluaXQ+AQADKClW
+CAAIAQAILS1zaGEyNTYKAAoACwcADAwADQAOAQAQamF2YS9sYW5nL1N0cmluZwEABmVxdWFscwEA
+FShMamF2YS9sYW5nL09iamVjdDspWggAEAEAB1NIQS0yNTYKABIAEwcAFAwAFQAWAQAbamF2YS9z
+ZWN1cml0eS9NZXNzYWdlRGlnZXN0AQALZ2V0SW5zdGFuY2UBADEoTGphdmEvbGFuZy9TdHJpbmc7
+KUxqYXZhL3NlY3VyaXR5L01lc3NhZ2VEaWdlc3Q7BwAYAQAXamF2YS9pby9GaWxlSW5wdXRTdHJl
+YW0KABcAGgwABQAbAQAVKExqYXZhL2xhbmcvU3RyaW5nOylWAwABAAAKAB4AHwcAIAwAIQAiAQAT
+amF2YS9pby9JbnB1dFN0cmVhbQEABHJlYWQBAAUoW0IpSQoAEgAkDAAlACYBAAZ1cGRhdGUBAAco
+W0JJSSlWCgAeACgMACkABgEABWNsb3NlBwArAQAXamF2YS9sYW5nL1N0cmluZ0J1aWxkZXIKACoA
+AwoAEgAuDAAvADABAAZkaWdlc3QBAAQoKVtCCAAyAQAEJTAyeAoANAA1BwA2DAA3ADgBAA5qYXZh
+L2xhbmcvQnl0ZQEAB3ZhbHVlT2YBABMoQilMamF2YS9sYW5nL0J5dGU7CgAKADoMADsAPAEABmZv
+cm1hdAEAOShMamF2YS9sYW5nL1N0cmluZztbTGphdmEvbGFuZy9PYmplY3Q7KUxqYXZhL2xhbmcv
+U3RyaW5nOwoAKgA+DAA/AEABAAZhcHBlbmQBAC0oTGphdmEvbGFuZy9TdHJpbmc7KUxqYXZhL2xh
+bmcvU3RyaW5nQnVpbGRlcjsJAEIAQwcARAwARQBGAQAQamF2YS9sYW5nL1N5c3RlbQEAA291dAEA
+FUxqYXZhL2lvL1ByaW50U3RyZWFtOwoASABJBwBKDABLAEwBABNqYXZhL2lvL1ByaW50U3RyZWFt
+AQAHcHJpbnRsbgEAFShMamF2YS9sYW5nL09iamVjdDspVgcATgEADGphdmEvbmV0L1VSTAoATQAa
+CgBNAFEMAFIAUwEADm9wZW5Db25uZWN0aW9uAQAaKClMamF2YS9uZXQvVVJMQ29ubmVjdGlvbjsH
+AFUBABpqYXZhL25ldC9IdHRwVVJMQ29ubmVjdGlvbgoAVABXDABYAFkBABpzZXRJbnN0YW5jZUZv
+bGxvd1JlZGlyZWN0cwEABChaKVYIAFsBAApVc2VyLUFnZW50CABdAQAOYWdlbnQ4LWluc3RhbGwK
+AFQAXwwAYABhAQASc2V0UmVxdWVzdFByb3BlcnR5AQAnKExqYXZhL2xhbmcvU3RyaW5nO0xqYXZh
+L2xhbmcvU3RyaW5nOylWCgBUAGMMAGQAZQEAD2dldFJlc3BvbnNlQ29kZQEAAygpSQgAZwEACExv
+Y2F0aW9uCgBUAGkMAGoAawEADmdldEhlYWRlckZpZWxkAQAmKExqYXZhL2xhbmcvU3RyaW5nOylM
+amF2YS9sYW5nL1N0cmluZzsKAE0AbQwABQBuAQAjKExqYXZhL25ldC9VUkw7TGphdmEvbGFuZy9T
+dHJpbmc7KVYJAEIAcAwAcQBGAQADZXJyCABzAQAHOiBIVFRQIAoAKgB1DAA/AHYBABwoSSlMamF2
+YS9sYW5nL1N0cmluZ0J1aWxkZXI7CgAqAHgMAHkAegEACHRvU3RyaW5nAQAUKClMamF2YS9sYW5n
+L1N0cmluZzsKAEgAfAwASwAbCgBCAH4MAH8AgAEABGV4aXQBAAQoSSlWCgBUAIIMAIMAhAEADmdl
+dElucHV0U3RyZWFtAQAXKClMamF2YS9pby9JbnB1dFN0cmVhbTsHAIYBABhqYXZhL2lvL0ZpbGVP
+dXRwdXRTdHJlYW0KAIUAGgoAiQCKBwCLDACMACYBABRqYXZhL2lvL091dHB1dFN0cmVhbQEABXdy
+aXRlCgCJACgIAI8BABQ6IHRvbyBtYW55IHJlZGlyZWN0cwcAkQEABUZldGNoAQAEQ29kZQEABG1h
+aW4BABYoW0xqYXZhL2xhbmcvU3RyaW5nOylWAQANU3RhY2tNYXBUYWJsZQcAlwEAAltCBwCZAQAT
+W0xqYXZhL2xhbmcvU3RyaW5nOwEACkV4Y2VwdGlvbnMHAJwBABNqYXZhL2xhbmcvRXhjZXB0aW9u
+ACEAkAACAAAAAAACAAEABQAGAAEAkgAAABEAAQABAAAABSq3AAGxAAAAAAAJAJMAlAACAJIAAAHe
+AAYACQAAAWgqAzISB7YACZkAfhIPuAARTLsAF1kqBDK3ABlNEhy8CE4sLbYAHVk2BJ4ADistAxUE
+tgAjp//tLLYAJ7sAKlm3ACw6BCu2AC06BRkFvjYGAzYHFQcVBqIAJxkFFQczNggZBBIxBL0AAlkD
+FQi4ADNTuAA5tgA9V4QHAaf/2LIAQRkEtgBHsbsATVkqAzK3AE9MAz0cCKIAsyu2AFDAAFROLQO2
+AFYtEloSXLYAXi22AGI2BBUEEQEsoQAmFQQRAZCiAB4tEma2AGjGABW7AE1ZKy0SZrYAaLcAbEyn
+AGcVBBEAyJ8AJ7IAb7sAKlm3ACwqAzK2AD0ScrYAPRUEtgB0tgB3tgB7BLgAfS22AIE6BbsAhVkq
+BDK3AIc6BhIcvAg6BxkFGQe2AB1ZNgieABAZBhkHAxUItgCIp//pGQa2AI2xhAIBp/9OsgBvuwAq
+WbcALCoDMrYAPRKOtgA9tgB3tgB7BLgAfbEAAAABAJUAAABkAAz+ACEHABIHAB4HAJYV/wAaAAgH
+AJgHABIHAB4HAJYHACoHAJYBAQAA+AAq/wAIAAEHAJgAAP0ADAcATQH9AEoHAFQBK/4AFwcAHgcA
+iQcAlhn/AAUAAwcAmAcATQEAAPoABQCaAAAABAABAJsAAA==
 '
+fetch_class() { # -> 0 when $WORK/fetch/Fetch.class is ready
+    [ -f "$WORK/fetch/Fetch.class" ] && return 0
+    mkdir -p "$WORK/fetch"
+    echo "$FETCH_CLASS" > "$WORK/fetch/Fetch.b64"
+    { base64 -d < "$WORK/fetch/Fetch.b64" || openssl base64 -d < "$WORK/fetch/Fetch.b64" ||
+      perl -MMIME::Base64 -e 'print decode_base64(join "", <STDIN>)' < "$WORK/fetch/Fetch.b64"
+    } > "$WORK/fetch/Fetch.class" 2>/dev/null
+}
 java_fetch() { # url file -> 0 if downloaded
-    if [ ! -f "$WORK/fetch/Fetch.class" ]; then
-        mkdir -p "$WORK/fetch"
-        echo "$FETCH_CLASS" > "$WORK/fetch/Fetch.b64"
-        { base64 -d < "$WORK/fetch/Fetch.b64" || openssl base64 -d < "$WORK/fetch/Fetch.b64" ||
-          perl -MMIME::Base64 -e 'print decode_base64(join "", <STDIN>)' < "$WORK/fetch/Fetch.b64"
-        } > "$WORK/fetch/Fetch.class" 2>/dev/null || return 1
-    fi
+    fetch_class || return 1
     "$JAVA" -cp "$WORK/fetch" Fetch "$1" "$2" 2>/dev/null
+}
+sha256() { # file -> prints its SHA-256 (sha256sum, shasum, Solaris digest, openssl, or Java)
+    if have sha256sum; then sha256sum < "$1" | sed 's/ .*//'
+    elif have shasum; then shasum -a 256 < "$1" | sed 's/ .*//'
+    elif have digest; then digest -a sha256 < "$1"
+    elif have openssl; then openssl dgst -sha256 < "$1" | sed 's/.* //'
+    else fetch_class && "$JAVA" -cp "$WORK/fetch" Fetch --sha256 "$1"
+    fi
+}
+verify() { # sums-file -> checks $WORK/agent8.jar (as $ASSET) and $WORK/jvmdg.jar against it
+    for f in "$ASSET:agent8.jar" jvmdg.jar:jvmdg.jar; do
+        name=${f%%:*} file=$WORK/${f#*:}
+        want=$(sed -n "s/^\([0-9a-f]\{64\}\)  *\*\{0,1\}$name\$/\1/p" "$1")
+        [ -n "$want" ] || die "$name is not listed in sha256sums.txt"
+        got=$(sha256 "$file") || die "cannot compute the SHA-256 of $name"
+        [ "$got" = "$want" ] || die "$name does not match its SHA-256 in sha256sums.txt (download damaged or altered)"
+    done
+    say "checked $ASSET and jvmdg.jar against sha256sums.txt"
 }
 release() { # tag -> as get_release, retried: assets are briefly missing while a release is re-published
     get_release "$1" && return 0
@@ -163,12 +195,19 @@ get_release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) 
     ASSET=agent8-java8.jar
     fetch "$base/$ASSET" "$WORK/agent8.jar"
 }
+get_sums() { # tag -> downloads sha256sums.txt into $WORK
+    if [ "$1" = latest ]; then base=$REPO/releases/latest/download; else base=$REPO/releases/download/$1; fi
+    fetch "$base/sha256sums.txt" "$WORK/sha256sums.txt"
+}
 
 # The agent8 jar (kept as $WORK/agent8.jar) and jvmdg.jar
 if [ -n "$FROM" ]; then
     [ -f "$FROM/$ASSET" ] || [ -n "$TARGET" ] || ASSET=agent8-java8.jar
     if cp "$FROM/$ASSET" "$WORK/agent8.jar" && cp "$FROM/jvmdg.jar" "$WORK/"; then :; else
         die "no $ASSET and jvmdg.jar in $FROM"
+    fi
+    if [ -f "$FROM/sha256sums.txt" ]; then verify "$FROM/sha256sums.txt"
+    else say "no sha256sums.txt in $FROM; copy it from the release to check the jars"
     fi
 else
     if [ -z "$VERSION" ] && [ -n "$URL" ]; then
@@ -179,14 +218,17 @@ else
         VERSION=$("$JAVA" -cp "$WORK/agent8.jar" io.jenkins.agent8.Main --remoting-version "$WORK/controller-agent.jar")
         say "controller uses remoting $VERSION"
     fi
+    TAG=latest
     if [ -n "$VERSION" ]; then
-        if release "remoting-$VERSION"; then :; else
+        if release "remoting-$VERSION"; then TAG=remoting-$VERSION; else
             say "no agent8 build for remoting $VERSION yet; using the latest build"
             release latest || die "cannot download from $REPO; try --cacert FILE, or download the release files elsewhere and use --from DIR"
         fi
     else
         release latest || die "cannot download from $REPO; try --cacert FILE, or download the release files elsewhere and use --from DIR"
     fi
+    get_sums "$TAG" || die "cannot download sha256sums.txt for $TAG from $REPO"
+    verify "$WORK/sha256sums.txt"
 fi
 
 # Check that this Java runs it before touching anything.
