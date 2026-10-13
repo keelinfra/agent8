@@ -51,7 +51,7 @@ jobs:
 
       - name: Start controller
         run: |
-          docker build -q -t controller --build-arg JENKINS_TAG=${{ matrix.jenkins }} -f test/Dockerfile.controller test
+          docker build --progress=plain -t controller --build-arg JENKINS_TAG=${{ matrix.jenkins }} -f test/Dockerfile.controller test
           docker run -d --name controller --network host controller
           for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
           curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
