@@ -19,7 +19,7 @@ ComputerSet.monitors.findAll { it.class.name == 'hudson.plugin.versioncolumn.JVM
 }
 // Git checkouts on the agent use JGit (plugin code from the controller, run on old Java):
 // the agent images have no git binary.
-j.getDescriptorByType(GitTool.DescriptorImpl).setInstallations(new GitTool('Default', 'git', []), new JGitTool())
+j.getDescriptorByType(GitTool.DescriptorImpl).setInstallations([new GitTool('Default', 'git', []), new JGitTool()] as GitTool[])
 def store = SystemCredentialsProvider.instance
 if (!store.credentials.any { it.id == 'agent8-cred' }) {
     store.credentials.add(new UsernamePasswordCredentialsImpl(CredentialsScope.GLOBAL, 'agent8-cred', '', 'agent8-user', 's3cret-pw'))
