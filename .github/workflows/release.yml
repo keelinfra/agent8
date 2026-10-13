@@ -127,7 +127,7 @@ jobs:
             gh release upload "$tag" dist/*.jar dist/sha256sums.txt --clobber
             gh release edit "$tag" --notes "$notes"
           else
-            gh release create "$tag" dist/*.jar dist/sha256sums.txt --title "agent8 for remoting $V" --notes "$notes"
+            gh release create "$tag" dist/*.jar dist/sha256sums.txt --title "agent8 for remoting $V" --notes "$notes" --latest=false
           fi
           if [ "${{ matrix.jenkins.tag }}" = "${{ inputs.latest }}" ]; then gh release edit "$tag" --latest; fi
 
