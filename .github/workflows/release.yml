@@ -1,5 +1,7 @@
 # Manual release: builds agent8 for each Jenkins version, tests it like CI does and
-# publishes one GitHub Release per remoting version (what install.sh downloads).
+# publishes one GitHub Release per Jenkins version, tagged jenkins-<version>. The latest
+# release carries index.txt ("<remoting version> <tag>" per line), which install.sh uses
+# to find the release that matches a controller's remoting version.
 name: Release
 
 on:
@@ -117,11 +119,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           V=$(unzip -p dist/agent8-java8.jar META-INF/MANIFEST.MF | sed -n 's/^Agent8-Remoting-Version: *//p' | tr -d '\r')
-          tag=remoting-$V
+          tag=jenkins-$JENKINS_VERSION
           if [ -n "$BASIC" ]; then tested="Tested with Jenkins $JENKINS_VERSION: connect, freestyle shell build, artifacts; no Pipeline or plugin tests"
           else tested="Tested with Jenkins $JENKINS_VERSION"; fi
-          title="agent8 for Jenkins $JENKINS_VERSION (remoting $V)"
-          notes="agent8 for Jenkins $JENKINS_VERSION: Jenkins $JENKINS_VERSION ships remoting $V, the agent version this release matches. Other Jenkins versions that ship the same remoting work too; \`install.sh --url\` checks this for you. $tested, built from ${GITHUB_SHA::7}.
+          title="agent8 for Jenkins $JENKINS_VERSION"
+          notes="agent8 for Jenkins $JENKINS_VERSION. Jenkins $JENKINS_VERSION ships remoting $V; this release also works with any other Jenkins version that ships remoting $V, and \`install.sh --url\` finds it for you. $tested, built from ${GITHUB_SHA::7}.
 
           | Host Java | Jar |
           |---|---|
@@ -140,6 +142,12 @@ jobs:
             gh release create "$tag" dist/*.jar dist/sha256sums.txt --title "$title" --notes "$notes" --latest=false
           fi
           if [ "${{ matrix.jenkins.tag }}" = "${{ inputs.latest }}" ]; then gh release edit "$tag" --latest; fi
+          # index.txt on the latest release: newest release first for each remoting version.
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+            --jq '.[] | select(.tag_name | startswith("jenkins-")) | (.body | capture("ships remoting (?<v>[^ ;,]+)").v) + " " + .tag_name' \
+            > index.txt
+          cat index.txt
+          gh release upload "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" index.txt --clobber
 
       - name: Install from the published release
         if: ${{ !inputs.dry_run }}

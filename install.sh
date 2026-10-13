@@ -195,6 +195,11 @@ get_release() { # tag -> downloads the agent8 jar for this Java (as agent8.jar) 
     ASSET=agent8-java8.jar
     fetch "$base/$ASSET" "$WORK/agent8.jar"
 }
+find_tag() { # remoting version -> prints the release tag built for it, from the latest release's index.txt
+    fetch "$REPO/releases/latest/download/index.txt" "$WORK/index.txt" || return 1
+    v=$(echo "$1" | sed 's/[.]/\\./g')
+    sed -n "s/^$v //p" "$WORK/index.txt" | sed q
+}
 get_sums() { # tag -> downloads sha256sums.txt into $WORK
     if [ "$1" = latest ]; then base=$REPO/releases/latest/download; else base=$REPO/releases/download/$1; fi
     fetch "$base/sha256sums.txt" "$WORK/sha256sums.txt"
@@ -222,7 +227,11 @@ else
     fi
     TAG=latest
     if [ -n "$VERSION" ]; then
-        if release "remoting-$VERSION"; then TAG=remoting-$VERSION; else
+        # Releases are tagged jenkins-<version>; those from before 2026-10-14, remoting-<version>.
+        TAG=$(find_tag "$VERSION")
+        if [ -n "$TAG" ] && release "$TAG"; then say "using release $TAG"
+        elif release "remoting-$VERSION"; then TAG=remoting-$VERSION; else
+            TAG=latest
             say "no agent8 build for remoting $VERSION yet; using the latest build"
             release latest || die "cannot download from $REPO; try --cacert FILE, or download the release files elsewhere and use --from DIR"
         fi

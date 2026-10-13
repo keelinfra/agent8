@@ -21,6 +21,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          curl -fsSL -o index.txt "https://github.com/$GH_REPO/releases/latest/download/index.txt" || : > index.txt
           for tag in lts-jdk21 latest-jdk21; do
             docker pull -q "jenkins/jenkins:$tag" >/dev/null
             id=$(docker create "jenkins/jenkins:$tag")
@@ -29,7 +30,7 @@ jobs:
             jenkins=$(unzip -p jenkins.war META-INF/MANIFEST.MF | sed -n 's/^Jenkins-Version: *//p' | tr -d '\r')
             remoting=$(unzip -l jenkins.war | sed -n 's|.*WEB-INF/lib/remoting-\(.*\)\.jar$|\1|p')
             echo "jenkins/jenkins:$tag = Jenkins $jenkins, remoting $remoting"
-            if gh release view "remoting-$remoting" >/dev/null 2>&1; then continue; fi
+            if grep -q "^$remoting " index.txt; then continue; fi
             title="No agent8 release for remoting $remoting"
             if gh issue list --state open --search "\"$title\" in:title" --json number -q '.[].number' | grep -q .; then
               echo "issue already open"; continue
