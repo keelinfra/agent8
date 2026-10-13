@@ -1,4 +1,18 @@
+<a href="https://keelinfra.io">
+  <picture>
+    <source media="(prefers-color-scheme: dark)"
+            srcset="https://raw.githubusercontent.com/keelinfra/.github/main/assets/wordmark-dark.svg">
+    <img alt="keelinfra" width="280"
+         src="https://raw.githubusercontent.com/keelinfra/.github/main/assets/wordmark-light.svg">
+  </picture>
+</a>
+
 # Agent8 for Jenkins
+
+[![CI](https://github.com/keelinfra/agent8/actions/workflows/ci.yml/badge.svg)](https://github.com/keelinfra/agent8/actions/workflows/ci.yml)
+[![Releases](https://img.shields.io/badge/releases-one%20per%20Jenkins%20version-blue)](https://github.com/keelinfra/agent8/releases)
+[![Host Java](https://img.shields.io/badge/host%20Java-8%20%7C%2011%20%7C%2017-blue)](#install)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
 Run a **native Jenkins agent on Java 8**, connected to a current Jenkins controller that runs on Java 21 or newer.
 
