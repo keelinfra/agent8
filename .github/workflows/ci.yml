@@ -63,7 +63,7 @@ jobs:
           curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
           echo "JENKINS_VERSION=$(curl -fsSI localhost:8080/login | sed -n 's/^X-Jenkins: *//Ip' | tr -d '\r')" >> "$GITHUB_ENV"
 
-      # agent8.jar (Java 8), agent8-java11.jar and agent8-java17.jar; the Java 17 build
+      # agent8-java8.jar, agent8-java11.jar and agent8-java17.jar; the Java 17 build
       # is only built, not tested yet.
       - name: Build agent8 jars from the controller's agent.jar
         run: ./build.sh agent.jar 8 11 17
@@ -72,7 +72,7 @@ jobs:
         run: test/serialization.sh
         env:
           JDK8_IMAGE: ${{ matrix.agent.jdk }}
-          AGENT_JAR: ${{ matrix.agent.jar || 'agent8.jar' }}
+          AGENT_JAR: ${{ matrix.agent.jar || 'agent8-java8.jar' }}
 
       - name: Integration test
         run: test/it.sh
@@ -80,7 +80,7 @@ jobs:
           JDK8_IMAGE: ${{ matrix.agent.jdk }}
           AGENT_IMAGE: ${{ matrix.agent.os }}
           EXPECT_JAVA: ${{ matrix.agent.java || '1.8' }}
-          EXPECT_JAR: ${{ matrix.agent.jar || 'agent8.jar' }}
+          EXPECT_JAR: ${{ matrix.agent.jar || 'agent8-java8.jar' }}
 
       - name: Controller log
         if: failure()
@@ -99,7 +99,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          V=$(unzip -p dist/agent8.jar META-INF/MANIFEST.MF | sed -n 's/^Agent8-Remoting-Version: *//p' | tr -d '\r')
+          V=$(unzip -p dist/agent8-java8.jar META-INF/MANIFEST.MF | sed -n 's/^Agent8-Remoting-Version: *//p' | tr -d '\r')
           tag=remoting-$V
           notes="agent8 for Jenkins remoting $V (tested with Jenkins $JENKINS_VERSION), built from ${GITHUB_SHA::7}.
           Install: \`sh install.sh --url <controller>\`, see the README.
@@ -111,6 +111,8 @@ jobs:
             gh release create "$tag" dist/*.jar --title "agent8 for remoting $V" --notes "$notes" ||
               gh release upload "$tag" dist/*.jar --clobber
           fi
+          # agent8.jar was renamed agent8-java8.jar; drop the old asset from existing releases.
+          gh release delete-asset "$tag" agent8.jar --yes 2>/dev/null || true
           # "latest" (install.sh's fallback) follows the LTS line.
           if [ "${{ matrix.jenkins }}" = lts-jdk21 ]; then gh release edit "$tag" --latest; fi
 

@@ -5,7 +5,7 @@
 #   ./build.sh path/to/agent.jar [targets]    use a jar from <jenkins>/jnlpJars/agent.jar
 #
 # targets: Java versions to build for, from 8, 11 and 17 (default: 8).
-# Output in dist/: agent8.jar (Java 8), agent8-java11.jar, agent8-java17.jar, and jvmdg.jar.
+# Output in dist/: agent8-java8.jar, agent8-java11.jar, agent8-java17.jar (as requested on the command line), and jvmdg.jar.
 # Every jar runs on its target Java and anything newer.
 # Needs JDK 17+, git, curl, unzip, python3.
 set -euo pipefail
@@ -85,7 +85,7 @@ cp "$WORK/deps/jvmdg.jar" "$DIST/jvmdg.jar"
 
 for target in "${TARGETS[@]}"; do
     case $target in
-        8) jar=agent8.jar; cv=52 ;;
+        8) jar=agent8-java8.jar; cv=52 ;;
         11) jar=agent8-java11.jar; cv=55 ;;
         17) jar=agent8-java17.jar; cv=61 ;;
     esac
@@ -118,4 +118,4 @@ os.replace(tmp, jar)
 PY
     echo "built $out (Java $target and newer) for remoting $VERSION"
 done
-echo "run (jvmdg.jar next to the jar): java -jar agent8.jar -url ... -secret ... -name ..."
+echo "run (jvmdg.jar next to the jar): java -jar agent8-javaN.jar -url ... -secret ... -name ..."
