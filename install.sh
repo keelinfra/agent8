@@ -228,7 +228,7 @@ else
     TAG=latest
     if [ -n "$VERSION" ]; then
         # Releases are tagged jenkins-<version>; those from before 2026-10-14, remoting-<version>.
-        TAG=$(find_tag "$VERSION")
+        TAG=$(find_tag "$VERSION") || TAG=
         if [ -n "$TAG" ] && release "$TAG"; then say "using release $TAG"
         elif release "remoting-$VERSION"; then TAG=remoting-$VERSION; else
             TAG=latest
