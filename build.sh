@@ -75,7 +75,7 @@ cp "$WORK/agent.jar" "$WORK/agent-patched.jar"
 # 3. The Java agent (Java 8 bytecode) with ASM and the compat classes inside.
 mkdir -p "$WORK/agent8/agent8-compat"
 javac -nowarn --release 8 -d "$WORK/agent8/agent8-compat" $(find compat -name "*.java")
-javac -nowarn --release 8 -cp "$WORK/deps/asm.jar:$WORK/deps/asm-commons.jar:$WORK/agent.jar" -d "$WORK/agent8" \
+javac -nowarn --release 8 -cp "$WORK/deps/asm.jar:$WORK/deps/asm-commons.jar:$WORK/deps/asm-tree.jar:$WORK/agent.jar" -d "$WORK/agent8" \
     src/io/jenkins/agent8/*.java
 (cd "$WORK/agent8" && for a in asm asm-commons asm-tree; do unzip -qo "$WORK/deps/$a.jar" 'org/*'; done)
 

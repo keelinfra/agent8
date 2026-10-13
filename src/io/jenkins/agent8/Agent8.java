@@ -30,6 +30,7 @@ import org.objectweb.asm.commons.SerialVersionUIDAdder;
  * bytecode is downgraded. Records always use UID 0.</li>
  * <li>JDK classes that only exist in newer Java but appear in serialized data
  * ({@code java.util.CollSer}) are added to the bootstrap class path.</li>
+ * <li>JvmDowngrader stubs that behave differently from the JDK are fixed, see {@link StubFixes}.</li>
  * </ol>
  */
 public final class Agent8 implements ClassFileTransformer {
@@ -50,6 +51,14 @@ public final class Agent8 implements ClassFileTransformer {
 
     @Override
     public byte[] transform(ClassLoader loader, String name, Class<?> redefined, ProtectionDomain pd, byte[] bytes) {
+        if (StubFixes.applies(name)) {
+            try {
+                return StubFixes.patch(bytes);
+            } catch (IOException | RuntimeException | LinkageError e) {
+                System.err.println("[agent8] cannot fix " + name + ": " + e);
+                return null;
+            }
+        }
         if (bytes == null || bytes.length < 8 || majorVersion(bytes) <= RUNTIME_CLASS_VERSION) {
             return null; // JvmDowngrader leaves it alone
         }
