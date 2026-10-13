@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       jenkins:
-        description: Jenkins image tags, space separated (e.g. "lts-jdk21 latest-jdk21 2.541.3-lts-jdk21")
+        description: Jenkins image tags, space separated (e.g. "lts-jdk21 latest-jdk21 2.541.3-lts-jdk21"); "none" to release only the basic ones
         default: lts-jdk21 latest-jdk21
       basic:
         description: Older Jenkins image tags whose plugins no longer install, tested with a bare controller (freestyle shell build), e.g. "2.462.3-lts-jdk17"
@@ -34,7 +34,7 @@ jobs:
           BASIC: ${{ inputs.basic }}
         run: |
           {
-            for t in $JENKINS; do jq -nc --arg t "$t" '{tag: $t, basic: ""}'; done
+            for t in $JENKINS; do [ "$t" = none ] && continue; jq -nc --arg t "$t" '{tag: $t, basic: ""}'; done
             for t in $BASIC; do jq -nc --arg t "$t" '{tag: $t, basic: "1"}'; done
           } | jq -sc . | sed 's/^/jenkins=/' >> "$GITHUB_OUTPUT"
 
