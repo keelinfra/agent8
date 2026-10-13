@@ -106,7 +106,7 @@ bad = [n for n in src.namelist() if n.endswith(".class") and not n.endswith("mod
 if bad:
     sys.exit("classes above Java %s in %s: %s" % (target, jar, bad[:5]))
 lines = [l for l in src.read("META-INF/MANIFEST.MF").decode().splitlines() if l and not l.startswith("Main-Class:")]
-lines += ["Main-Class: io.jenkins.agent8.Main", "Premain-Class: io.jenkins.agent8.Agent8",
+lines += ["Main-Class: io.jenkins.agent8.Main", "Premain-Class: io.jenkins.agent8.Agent8", "Can-Retransform-Classes: true",
           "Agent8-Remoting-Version: " + version, "Agent8-Target-Java: " + target]
 tmp = jar + ".tmp"
 with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
