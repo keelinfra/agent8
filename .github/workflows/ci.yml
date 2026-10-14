@@ -110,17 +110,19 @@ jobs:
             rm -f /usr/bin/curl /usr/bin/wget
             sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8-java --repo https://github.com/${{ github.repository }}'
 
-  # Older agent8 releases against the newest controller, as after controller upgrades
-  # without rerunning install.sh: the latest release (current LTS) and the oldest one, on a
-  # controller without the versioncolumn plugin (whose Remoting Version monitor would take
-  # such an agent offline).
+  # An older agent8 release against the newest controller, as after a controller upgrade
+  # without rerunning install.sh, on a controller without the versioncolumn plugin (whose
+  # Remoting Version monitor would take such an agent offline). Only the latest release
+  # (current LTS): Jenkins refuses agents below a minimum remoting version, and 2.586
+  # already refuses the jenkins-2.462.3 build (remoting 3248; "Agent version
+  # 3256.3258.v858f3c9a_f69d or newer is required").
   version-skew:
     name: agent8 ${{ matrix.release }} against the weekly controller, no versioncolumn
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        release: [latest, jenkins-2.462.3]
+        release: [latest]
     steps:
       - uses: actions/checkout@v5
 
