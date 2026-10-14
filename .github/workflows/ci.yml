@@ -110,13 +110,17 @@ jobs:
             rm -f /usr/bin/curl /usr/bin/wget
             sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8-java --repo https://github.com/${{ github.repository }}'
 
-  # An agent8 jar one remoting version behind the controller, as after a controller upgrade
-  # before install.sh is rerun: the latest release (current LTS) against the weekly, on a
+  # Older agent8 releases against the newest controller, as after controller upgrades
+  # without rerunning install.sh: the latest release (current LTS) and the oldest one, on a
   # controller without the versioncolumn plugin (whose Remoting Version monitor would take
   # such an agent offline).
   version-skew:
-    name: Older agent8 release, newer controller (weekly), no versioncolumn
+    name: agent8 ${{ matrix.release }} against the weekly controller, no versioncolumn
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        release: [latest, jenkins-2.462.3]
     steps:
       - uses: actions/checkout@v5
 
@@ -128,11 +132,12 @@ jobs:
           docker run -d --name controller --network host controller
           for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
 
-      - name: Download the latest release
+      - name: Download the release
         run: |
           mkdir dist
           for f in agent8-java8.jar jvmdg.jar sha256sums.txt; do
-            curl -fsSL -o "dist/$f" "https://github.com/${{ github.repository }}/releases/latest/download/$f"
+            if [ "${{ matrix.release }}" = latest ]; then base=latest/download; else base=download/${{ matrix.release }}; fi
+            curl -fsSL -o "dist/$f" "https://github.com/${{ github.repository }}/releases/$base/$f"
           done
           curl -fsS -o controller-agent.jar localhost:8080/jnlpJars/agent.jar
           echo "controller remoting: $(unzip -p controller-agent.jar META-INF/MANIFEST.MF | sed -n 's/^Version: *//p')"
