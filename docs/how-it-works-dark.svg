@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400">
+<title>How Agent8 works</title>
+<desc>Without Agent8, Jenkins' official agent.jar needs Java 21, so a build host on Java 8 cannot connect. install.sh asks the controller which agent it ships, downloads the matching Agent8 jar, checks its sha256 and swaps it in. The host then runs the same java -jar agent.jar on its own Java 8, connects and runs builds.</desc>
+<style>
+text{font-family:"IBM Plex Sans",-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#e4ecf3}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.muted{fill:#8fa1b3}
+.a,.b,.c,.oldjar,.newjar,.q,.r,.pkg,.sha,.build{animation-duration:12s;animation-iteration-count:infinite;animation-timing-function:ease-in-out}
+.a{opacity:0;animation-name:pa}
+.b{opacity:0;animation-name:pb}
+.c{opacity:1;animation-name:pc}
+.oldjar{opacity:0;animation-name:oldjar}
+.newjar{opacity:1;animation-name:newjar}
+.q{opacity:0;animation-name:q}
+.r{opacity:0;animation-name:r}
+.pkg{opacity:0;animation-name:pkg}
+.sha{opacity:1;animation-name:sha}
+.build{opacity:1;animation-name:build}
+.dot{animation:dot 1.6s linear infinite}
+.dot.back{animation-name:dotback}
+.dot.d2{animation-delay:-.8s}
+@keyframes pa{0%,27%{opacity:1}30%,97%{opacity:0}100%{opacity:1}}
+@keyframes pb{0%,29%{opacity:0}32%,60%{opacity:1}63%,100%{opacity:0}}
+@keyframes pc{0%,61%{opacity:0}64%,96%{opacity:1}99%,100%{opacity:0}}
+@keyframes oldjar{0%,50%{opacity:1}53%,97%{opacity:0}100%{opacity:1}}
+@keyframes newjar{0%,51%{opacity:0}54%,96%{opacity:1}99%,100%{opacity:0}}
+@keyframes q{0%,32%{opacity:0;transform:translateX(0)}34%{opacity:1;transform:translateX(0)}40%{opacity:1;transform:translateX(-230px)}42%,100%{opacity:0;transform:translateX(-230px)}}
+@keyframes r{0%,41%{opacity:0;transform:translateX(0)}43%{opacity:1;transform:translateX(0)}48%{opacity:1;transform:translateX(230px)}50%,100%{opacity:0;transform:translateX(230px)}}
+@keyframes pkg{0%,46%{opacity:0;transform:translate(0,0)}48%{opacity:1;transform:translate(0,0)}53%{opacity:1;transform:translate(255px,140px)}55%,100%{opacity:0;transform:translate(255px,140px)}}
+@keyframes sha{0%,54%{opacity:0}56%,96%{opacity:1}99%,100%{opacity:0}}
+@keyframes build{0%,70%{opacity:0}74%,96%{opacity:1}99%,100%{opacity:0}}
+@keyframes dot{0%{transform:translateX(0);opacity:0}10%,90%{opacity:1}100%{transform:translateX(330px);opacity:0}}
+@keyframes dotback{0%{transform:translateX(0);opacity:0}10%,90%{opacity:1}100%{transform:translateX(-330px);opacity:0}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important}}
+</style>
+<rect width="960" height="400" rx="16" fill="#0c141d"/>
+
+<!-- step pills -->
+<g>
+  <rect x="150" y="18" width="200" height="30" rx="15" fill="none" stroke="#33465a"/>
+  <text x="250" y="38" text-anchor="middle" font-size="13" font-weight="600" class="muted">1 · Without Agent8</text>
+  <rect x="380" y="18" width="200" height="30" rx="15" fill="none" stroke="#33465a"/>
+  <text x="480" y="38" text-anchor="middle" font-size="13" font-weight="600" class="muted">2 · sh install.sh</text>
+  <rect x="610" y="18" width="200" height="30" rx="15" fill="none" stroke="#33465a"/>
+  <text x="710" y="38" text-anchor="middle" font-size="13" font-weight="600" class="muted">3 · With Agent8</text>
+</g>
+<g class="a"><rect x="150" y="18" width="200" height="30" rx="15" fill="#e8a33d"/><text x="250" y="38" text-anchor="middle" font-size="13" font-weight="600" style="fill:#0b2239">1 · Without Agent8</text></g>
+<g class="b"><rect x="380" y="18" width="200" height="30" rx="15" fill="#e8a33d"/><text x="480" y="38" text-anchor="middle" font-size="13" font-weight="600" style="fill:#0b2239">2 · sh install.sh</text></g>
+<g class="c"><rect x="610" y="18" width="200" height="30" rx="15" fill="#e8a33d"/><text x="710" y="38" text-anchor="middle" font-size="13" font-weight="600" style="fill:#0b2239">3 · With Agent8</text></g>
+
+<!-- controller -->
+<rect x="40" y="110" width="250" height="190" rx="12" fill="#121e2a" stroke="#33465a"/>
+<text x="62" y="140" font-size="11.5" font-weight="600" letter-spacing="1" class="mono muted">CONTROLLER</text>
+<text x="62" y="168" font-size="19" font-weight="700">Current Jenkins</text>
+<rect x="62" y="182" width="104" height="26" rx="6" fill="#121e2a" stroke="#33465a"/>
+<text x="114" y="200" text-anchor="middle" font-size="13" class="mono">Java 21 / 25</text>
+<text x="62" y="240" font-size="13.5" class="muted">Upgraded on schedule,</text>
+<text x="62" y="260" font-size="13.5" class="muted">security fixes applied.</text>
+
+<!-- GitHub Releases (step 2) -->
+<g class="b">
+  <rect x="395" y="66" width="170" height="44" rx="10" fill="#121e2a" stroke="#33465a"/>
+  <text x="480" y="85" text-anchor="middle" font-size="12" font-weight="600">GitHub Releases</text>
+  <text x="480" y="101" text-anchor="middle" font-size="11.5" class="mono muted">jenkins-2.580.1</text>
+</g>
+
+<!-- host -->
+<rect x="670" y="110" width="250" height="190" rx="12" fill="#121e2a" stroke="#33465a"/>
+<text x="692" y="140" font-size="11.5" font-weight="600" letter-spacing="1" class="mono muted">BUILD HOST</text>
+<text x="692" y="168" font-size="19" font-weight="700">AIX · RHEL 6 · Solaris</text>
+<rect x="692" y="182" width="66" height="26" rx="6" fill="#3a2a10"/>
+<text x="725" y="200" text-anchor="middle" font-size="13" class="mono" style="fill:#f3cf8f">Java 8</text>
+<rect x="692" y="222" width="206" height="28" rx="6" fill="#07111a"/>
+<text x="702" y="241" font-size="12.5" class="mono" style="fill:#cfdeea"><tspan style="fill:#e8a33d">$</tspan> java -jar agent.jar</text>
+<g class="oldjar">
+  <rect x="692" y="260" width="206" height="26" rx="6" fill="#3d1a1a"/>
+  <text x="702" y="278" font-size="12.5" class="mono" style="fill:#f97066">agent.jar needs Java 21</text>
+</g>
+<g class="newjar">
+  <rect x="692" y="260" width="206" height="26" rx="6" fill="#12352a"/>
+  <text x="702" y="278" font-size="12.5" class="mono" style="fill:#4cc38a">agent.jar = Agent8 ✓</text>
+</g>
+
+<!-- link: step 1, broken -->
+<g class="a">
+  <line x1="290" y1="205" x2="670" y2="205" stroke="#33465a" stroke-width="2" stroke-dasharray="6 6"/>
+  <circle cx="480" cy="205" r="17" fill="#3d1a1a" stroke="#f97066" stroke-width="2"/>
+  <path d="M473 198l14 14M487 198l-14 14" stroke="#f97066" stroke-width="2.6" stroke-linecap="round"/>
+  <text x="480" y="244" text-anchor="middle" font-size="12" class="mono" style="fill:#f97066">UnsupportedClassVersionError</text>
+  <text x="480" y="186" text-anchor="middle" font-size="12" class="mono muted">no connection</text>
+</g>
+
+<!-- link: step 2, install.sh talks to the controller -->
+<g class="b">
+  <line x1="290" y1="205" x2="670" y2="205" stroke="#33465a" stroke-width="2"/>
+</g>
+<g class="q"><rect x="545" y="168" width="112" height="24" rx="12" fill="#121e2a" stroke="#33465a"/><text x="601" y="184" text-anchor="middle" font-size="11.5" class="mono">which agent?</text></g>
+<g class="r"><rect x="303" y="168" width="112" height="24" rx="12" fill="#121e2a" stroke="#33465a"/><text x="359" y="184" text-anchor="middle" font-size="11.5" class="mono">remoting 3386</text></g>
+<g class="pkg">
+  <rect x="440" y="120" width="80" height="30" rx="7" fill="#12352a" stroke="#4cc38a"/>
+  <text x="480" y="140" text-anchor="middle" font-size="12" font-weight="600" class="mono" style="fill:#4cc38a">agent8</text>
+</g>
+
+<!-- link: step 3, connected -->
+<g class="c">
+  <line x1="290" y1="205" x2="670" y2="205" stroke="#4cc38a" stroke-width="2.5"/>
+  <circle class="dot" cx="305" cy="199" r="4" fill="#4cc38a"/>
+  <circle class="dot d2" cx="305" cy="199" r="4" fill="#4cc38a"/>
+  <circle class="dot back" cx="655" cy="211" r="4" fill="#e8a33d"/>
+  <circle class="dot back d2" cx="655" cy="211" r="4" fill="#e8a33d"/>
+  <text x="480" y="186" text-anchor="middle" font-size="12" class="mono" style="fill:#4cc38a">connected</text>
+  <g class="build">
+    <rect x="410" y="226" width="140" height="26" rx="13" fill="#12352a"/>
+    <text x="480" y="244" text-anchor="middle" font-size="12" font-weight="600" style="fill:#4cc38a">build #128 passed</text>
+  </g>
+</g>
+
+<!-- captions -->
+<g class="a"><text x="480" y="340" text-anchor="middle" font-size="15" font-weight="600">Jenkins' agent.jar now needs Java 21.</text><text x="480" y="364" text-anchor="middle" font-size="14" class="muted">A build host stuck on Java 8 can't start it, so it drops off the controller.</text></g>
+<g class="b"><text x="480" y="340" text-anchor="middle" font-size="15" font-weight="600">install.sh fetches the Agent8 build for your Jenkins version.</text><text x="480" y="364" text-anchor="middle" font-size="14" class="muted">It asks the controller which agent it ships, checks the sha256 and swaps the jar in.</text></g>
+<g class="c"><text x="480" y="340" text-anchor="middle" font-size="15" font-weight="600">Same command, same Java 8, current Jenkins.</text><text x="480" y="364" text-anchor="middle" font-size="14" class="muted">The host restarts with java -jar agent.jar, connects, and runs builds as an ordinary node.</text></g>
+</svg>
