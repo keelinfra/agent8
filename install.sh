@@ -277,3 +277,4 @@ else
     say "start the agent as usual, with this jar:"
     say "  $JAVA -jar $DIR/agent8.jar -url <controller> -secret <secret> -name <node> -workDir <dir>"
 fi
+say "Rolling this out to many hosts or to AIX/Solaris/HP-UX? Help and support: https://keelinfra.io/jenkins/pricing/"
