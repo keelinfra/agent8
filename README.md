@@ -20,6 +20,11 @@ Run a **native Jenkins agent on Java 8**, connected to a current Jenkins control
 
 Jenkins requires Java 21+ on the controller and on every agent. Build hosts that cannot run Java 21 — RHEL/CentOS 6, AIX 7.1, older HP-UX and Solaris — are left behind, and their teams stay on old, unsupported Jenkins. This project builds an `agent.jar` that runs on Java 8, so these hosts stay ordinary agents: labels, executors, `sh`, file steps, `junit`, `stash`, aborts and the script console work as on any other node.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/how-it-works-dark.svg">
+  <img alt="How Agent8 works: without it, Jenkins' agent.jar needs Java 21 and a Java 8 host can't connect; install.sh fetches the Agent8 build for your Jenkins version, checks its sha256 and swaps it in; the host runs the same java -jar agent.jar on Java 8 and connects." src="docs/how-it-works-light.svg" width="960">
+</picture>
+
 ## Status
 
 Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release; AIX, Solaris and HP-UX are still experimental.
