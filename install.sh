@@ -43,7 +43,7 @@ while [ $# -gt 0 ]; do
         --repo) REPO=$2; shift 2 ;;
         --cacert) CACERT=$2; shift 2 ;;
         --restore) RESTORE=$2; shift 2 ;;
-        -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
         *) echo "agent8: unknown option $1 (see --help)" >&2; exit 2 ;;
     esac
 done

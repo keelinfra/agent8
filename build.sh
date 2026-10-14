@@ -19,10 +19,13 @@ mkdir -p "$WORK" "$DIST" "$DEPS"
 ln -s "$DEPS" "$WORK/deps"
 
 # Dependencies, pinned by checksum and cached in .deps.
+# (Runs on Linux and macOS: no sha256sum -c, sed -i or mapfile, which differ or are
+# missing there.)
+sha256() { if command -v sha256sum >/dev/null; then sha256sum < "$1"; else shasum -a 256 < "$1"; fi | cut -d' ' -f1; }
 fetch() { # url sha256 file
-    if ! echo "$2  $3" | sha256sum -c --quiet >/dev/null 2>&1; then
+    if [[ ! -f $3 || $(sha256 "$3") != "$2" ]]; then
         curl -fsSL --retry 5 --retry-all-errors -o "$3" "$1"
-        echo "$2  $3" | sha256sum -c --quiet
+        [[ $(sha256 "$3") = "$2" ]] || { echo "checksum mismatch: $1" >&2; exit 1; }
     fi
 }
 MC=https://repo1.maven.org/maven2
@@ -66,14 +69,15 @@ for p in "$ROOT"/patches/*.patch; do
         git -C "$WORK/remoting" apply "$p" # fails, showing why
     fi
 done
-mapfile -t CHANGED < <(git -C "$WORK/remoting" diff --name-only)
+while IFS= read -r f; do CHANGED+=("$f"); done < <(git -C "$WORK/remoting" diff --name-only)
 mkdir -p "$WORK/patched"
 cp "$WORK/agent.jar" "$WORK/agent-patched.jar"
 if [[ ${#CHANGED[@]} -gt 0 ]]; then
     for f in "${CHANGED[@]}"; do
         # agent.jar shades remoting's own dependencies
-        sed -i 's/^import org\.jenkinsci\.constant_pool_scanner/import io.jenkins.remoting.shaded.org.jenkinsci.constant_pool_scanner/' \
-            "$WORK/remoting/$f"
+        sed 's/^import org\.jenkinsci\.constant_pool_scanner/import io.jenkins.remoting.shaded.org.jenkinsci.constant_pool_scanner/' \
+            "$WORK/remoting/$f" > "$WORK/remoting/$f.tmp"
+        mv "$WORK/remoting/$f.tmp" "$WORK/remoting/$f"
     done
     javac -nowarn --release 17 -cp "$WORK/agent.jar:$WORK/deps/spotbugs-annotations.jar" -d "$WORK/patched" \
         "${CHANGED[@]/#/$WORK/remoting/}"
