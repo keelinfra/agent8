@@ -32,11 +32,13 @@ Available and free to use (MIT). Linux is tested in CI on every change, and week
 | Agent platform | Status |
 |---|---|
 | Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | Tested in CI on CentOS 6.10 |
-| Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI |
+| Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI; best effort (see below) |
 | AIX 7.1 / 7.2 with IBM Java 8 | Experimental: not yet run on real AIX |
 | Solaris, HP-UX with Java 8 | Experimental: not tested |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
 | Linux, HotSpot Java 17 (`agent8-java17.jar`) | Tested in CI against the current LTS |
+
+**OpenJ9 and IBM Java (J9) are outside Jenkins' own support:** the Jenkins Platform SIG [stopped supporting OpenJ9](https://github.com/jenkinsci/remoting/issues/1223#issuecomment-3577915365) in 2021, and the Jenkins issue tracker has a history of J9-specific problems. On AIX, IBM Java 8 is often the only Java there is, so agent8 tests OpenJ9 8 in CI and fixes J9-specific failures it finds (one so far, in JvmDowngrader), but support for J9 is best effort. Please report J9 problems [here](https://github.com/keelinfra/agent8/issues), not to Jenkins.
 
 Java 8 is the main target. The same build also makes jars for hosts capped at Java 11 (Solaris SPARC and x86 stop at JDK 11, since JDK 15 dropped those ports) and Java 17.
 
