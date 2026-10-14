@@ -109,3 +109,40 @@ jobs:
             sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8 --repo https://github.com/${{ github.repository }}
             rm -f /usr/bin/curl /usr/bin/wget
             sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8-java --repo https://github.com/${{ github.repository }}'
+
+  # An agent8 jar one remoting version behind the controller, as after a controller upgrade
+  # before install.sh is rerun: the latest release (current LTS) against the weekly, on a
+  # controller without the versioncolumn plugin (whose Remoting Version monitor would take
+  # such an agent offline).
+  version-skew:
+    name: Older agent8 release, newer controller (weekly), no versioncolumn
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start controller
+        run: |
+          docker build --progress=plain -t controller --build-arg JENKINS_TAG=latest-jdk21 \
+            --build-arg PLUGINS="workflow-job workflow-cps workflow-durable-task-step workflow-basic-steps pipeline-stage-step junit git credentials-binding" \
+            -f test/Dockerfile.controller test
+          docker run -d --name controller --network host controller
+          for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
+
+      - name: Download the latest release
+        run: |
+          mkdir dist
+          for f in agent8-java8.jar jvmdg.jar sha256sums.txt; do
+            curl -fsSL -o "dist/$f" "https://github.com/${{ github.repository }}/releases/latest/download/$f"
+          done
+          curl -fsS -o controller-agent.jar localhost:8080/jnlpJars/agent.jar
+          echo "controller remoting: $(unzip -p controller-agent.jar META-INF/MANIFEST.MF | sed -n 's/^Version: *//p')"
+          echo "agent8 remoting:     $(unzip -p dist/agent8-java8.jar META-INF/MANIFEST.MF | sed -n 's/^Agent8-Remoting-Version: *//p')"
+
+      - name: Integration test
+        run: test/it.sh
+        env:
+          NO_VERSIONCOLUMN: '1'
+
+      - name: Controller log
+        if: failure()
+        run: docker logs controller 2>&1 | tail -200

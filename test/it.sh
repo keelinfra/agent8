@@ -8,6 +8,7 @@
 #   JDK8_IMAGE    image to copy the old Java runtime from (default eclipse-temurin:8-jdk)
 #   EXPECT_JAVA   java.version prefix the agent must report (default 1.8)
 #   EXPECT_JAR    dist/ jar install.sh must pick for that Java (default agent8-java8.jar)
+#   NO_VERSIONCOLUMN=1  the controller has no versioncolumn plugin: skip its monitor check
 #   BASIC=1       bare controller without plugins (PLUGINS="" in Dockerfile.controller): a
 #                 freestyle shell build instead of the Pipeline, Git and credentials checks
 set -euo pipefail
@@ -141,7 +142,7 @@ printf 'println System.getProperty("java.version")\n' > "$T/console.groovy"
 out=$(post --data-urlencode "script@$T/console.groovy" "$URL/computer/agent8/scriptText")
 check "script console runs on Java $EXPECT_JAVA ($out)" test "${out:0:${#EXPECT_JAVA}}" = "$EXPECT_JAVA"
 
-if [[ -z ${BASIC:-} ]]; then
+if [[ -z ${BASIC:-} && -z ${NO_VERSIONCOLUMN:-} ]]; then
     out=$(groovy test/jvm-monitor.groovy)
     echo "$out"
     check "JVM version monitor keeps the agent online ($out)" sh -c "echo '$out' | grep -q 'offline=false'"
