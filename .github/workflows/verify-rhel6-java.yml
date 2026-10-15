@@ -1,0 +1,69 @@
+# One-off check (not for main): which current JDKs start on CentOS 6, and does the stock
+# agent.jar connect from CentOS 6 with them?
+name: Verify Java 17+ on CentOS 6
+on:
+  push:
+    branches: [verify-rhel6-java]
+jobs:
+  repos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: OpenJDK packages in the CentOS 6.10 repositories
+        run: |
+          for r in os updates; do
+            echo "== 6.10/$r"
+            curl -fsS https://vault.centos.org/6.10/$r/x86_64/Packages/ |
+              grep -o 'java-[0-9.]*-openjdk-[0-9][^"]*x86_64\.rpm' | sort -uV
+          done | tee -a "$GITHUB_STEP_SUMMARY"
+  jdk:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: [corretto-17, corretto-21, corretto-25, temurin-17, temurin-21, zulu-17, zulu-21, oracle-21]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download ${{ matrix.jdk }}
+        run: |
+          v=${{ matrix.jdk }}; n=${v#*-}
+          case $v in
+            corretto-*) url=https://corretto.aws/downloads/latest/amazon-corretto-$n-x64-linux-jdk.tar.gz ;;
+            temurin-*) url=https://api.adoptium.net/v3/binary/latest/$n/ga/linux/x64/jdk/hotspot/normal/eclipse ;;
+            zulu-*) url=$(curl -fsS "https://api.azul.com/metadata/v1/zulu/packages/?java_version=$n&os=linux&arch=x64&archive_type=tar.gz&java_package_type=jdk&javafx_bundled=false&latest=true&release_status=ga" | jq -r '.[0].download_url') ;;
+            oracle-*) url=https://download.oracle.com/java/$n/latest/jdk-${n}_linux-x64_bin.tar.gz ;;
+          esac
+          echo "$url"
+          mkdir jdk && curl -fsSL "$url" | tar xz -C jdk --strip-components=1
+          jdk/bin/java -version
+      - name: Highest glibc symbol version the JDK needs (CentOS 6 has glibc 2.12)
+        run: |
+          find jdk -name '*.so' -o -path '*/bin/java' | xargs objdump -T 2>/dev/null |
+            grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -3
+      - name: java -version on CentOS 6
+        id: run
+        run: |
+          docker run --rm -v "$PWD/jdk:/opt/jdk:ro" centos:6 sh -c 'cat /etc/redhat-release; /opt/jdk/bin/java -version'
+      - name: Start controller (Jenkins LTS, core only)
+        run: |
+          docker build -q -t controller --build-arg PLUGINS= -f test/Dockerfile.controller test
+          docker run -d --name controller --network host controller
+          for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
+          curl -fsSI localhost:8080/login | grep -i '^X-Jenkins:'
+          curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
+          curl -fsS -c c -b c localhost:8080/crumbIssuer/api/json > crumb.json
+          h=$(sed 's/.*"crumb":"\([^"]*\)".*"crumbRequestField":"\([^"]*\)".*/\2:\1/' crumb.json)
+          curl -fsS -c c -b c -X POST -H "$h" --data-urlencode "script@test/setup-basic.groovy" localhost:8080/scriptText
+      - name: Stock agent.jar on CentOS 6 connects and builds
+        run: |
+          secret=$(curl -fsS localhost:8080/computer/agent8/jenkins-agent.jnlp | sed -n 's/.*<argument>\([0-9a-f]\{64\}\)<\/argument>.*/\1/p')
+          docker run -d --name agent --network host -v "$PWD/jdk:/opt/jdk:ro" -v "$PWD/agent.jar:/agent.jar:ro" centos:6 \
+            sh -c "/opt/jdk/bin/java -jar /agent.jar -url http://localhost:8080/ -secret $secret -name agent8 -workDir /tmp/w"
+          for i in $(seq 1 40); do curl -fsS 'localhost:8080/computer/agent8/api/json?tree=offline' | grep -q '"offline":false' && break; sleep 3; done
+          docker logs agent 2>&1 | tail -15
+          curl -fsS 'localhost:8080/computer/agent8/api/json?tree=offline' | grep -q '"offline":false'
+          h=$(curl -fsS -c c -b c localhost:8080/crumbIssuer/api/json | sed 's/.*"crumb":"\([^"]*\)".*"crumbRequestField":"\([^"]*\)".*/\2:\1/')
+          curl -fsS -c c -b c -X POST -H "$h" localhost:8080/job/agent8-basic/build
+          for i in $(seq 1 60); do r=$(curl -fsS 'localhost:8080/job/agent8-basic/1/api/json?tree=result,building' 2>/dev/null || true); echo "$r" | grep -q '"building":false' && break; sleep 2; done
+          curl -fsS localhost:8080/job/agent8-basic/1/consoleText
+          echo "$r" | grep -q '"result":"SUCCESS"'
+          echo "${{ matrix.jdk }}: stock agent.jar connected from CentOS 6 and the build passed" >> "$GITHUB_STEP_SUMMARY"
