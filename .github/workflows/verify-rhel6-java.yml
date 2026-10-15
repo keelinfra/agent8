@@ -43,9 +43,9 @@ jobs:
         id: run
         run: |
           docker run --rm -v "$PWD/jdk:/opt/jdk:ro" centos:6 sh -c 'cat /etc/redhat-release; /opt/jdk/bin/java -version'
-      - name: Start controller (Jenkins LTS, core only)
+      - name: Start controller (Jenkins LTS)
         run: |
-          docker build -q -t controller --build-arg PLUGINS= -f test/Dockerfile.controller test
+          docker build -q -t controller -f test/Dockerfile.controller test
           docker run -d --name controller --network host controller
           for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
           curl -fsSI localhost:8080/login | grep -i '^X-Jenkins:'
