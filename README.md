@@ -20,7 +20,7 @@ Run a **native Jenkins agent on Java 8**, connected to a current Jenkins control
 
 Jenkins requires Java 21+ on the controller and on every agent. Build hosts that cannot run Java 21 — AIX 7.1, older HP-UX and Solaris — are left behind, and their teams stay on old, unsupported Jenkins. This project builds an `agent.jar` that runs on Java 8, so these hosts stay ordinary agents: labels, executors, `sh`, file steps, `junit`, `stash`, aborts and the script console work as on any other node.
 
-On RHEL/CentOS 6 x86_64, try a newer JDK first: [Amazon Corretto](https://aws.amazon.com/corretto/faqs/) 17 and 21 list RHEL 6+ as supported, and with Corretto 21 the stock `agent.jar` connects without agent8 (Corretto 25 needs RHEL 7+). Agent8 is for hosts with no Java 21 build at all, and for hosts whose installed JDK must not change, such as a certified or validated toolchain.
+On RHEL/CentOS 6 x86_64, try a newer JDK first. The OS repositories stop at OpenJDK 8, but Amazon Corretto 21 and Azul Zulu 21 run on CentOS 6.10, and with them the stock `agent.jar` connects to the current LTS and runs builds without agent8 (checked in GitHub Actions, 2026-10-15). Eclipse Temurin 21 does not start there (it needs glibc 2.14; CentOS 6 has 2.12), Java 17 is too old for current Jenkins agents, and Corretto 25 needs RHEL 7+, so this route ends when Jenkins requires Java 25. Agent8 is for hosts with no Java 21 build at all, and for hosts whose installed JDK must not change, such as a certified or validated toolchain.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/how-it-works-dark.svg">
