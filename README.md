@@ -125,7 +125,7 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 
 ## Known gaps
 
-- A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run code on agents (git, Maven, Docker, credentials binding …) still need testing.
+- A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker or command-line git, still need testing.
 - AIX with IBM Java 8 is untested on real hardware; OpenJ9 on Linux covers the JVM but not AIX itself.
 - On AIX, Jenkins code on the agent loads JNA (for example to kill a build's processes on abort); whether its AIX native library loads is checked only on the first real AIX run ([#2](https://github.com/keelinfra/agent8/issues/2)). The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
 
