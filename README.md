@@ -75,6 +75,8 @@ ansible-playbook -i inventory ansible/agent8.yml \
   -e "agent8_restart='/etc/init.d/jenkins-agent restart'"
 ```
 
+For SSH agents pass `-e agent8_dir=/opt/agent8` instead of `agent8_replace` and set each node's *Java Path* to `/opt/agent8/java` (see SSH agents below); Jenkins relaunches them, so no restart command is needed. The other options map one to one: `agent8_from`, `agent8_cacert`, `agent8_repo`, `agent8_java`, `agent8_target`, and `agent8_restore` to undo a swap.
+
 **Controller setting, if the Versions Node Monitors plugin (`versioncolumn`) is installed.** Its *JVM Version* monitor takes every agent whose Java is older than the controller's offline, seconds after it connects ("incompatible JVM version between agent and controller"). For agent8 hosts, set it to not disconnect under *Manage Jenkins → Nodes → Configure Node Monitors*, or in configuration as code:
 
 ```yaml

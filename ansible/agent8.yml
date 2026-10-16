@@ -5,6 +5,14 @@
 #     -e agent8_controller_url=https://jenkins.example.com/ \
 #     -e agent8_replace=/opt/jenkins/agent.jar \
 #     -e "agent8_restart='/etc/init.d/jenkins-agent restart'"
+#
+# SSH agents (SSH Build Agents plugin): install to a directory instead of replacing a jar,
+# then set each node's Java Path to DIR/java. Jenkins relaunches them; no restart needed.
+#
+#   ansible-playbook -i inventory ansible/agent8.yml \
+#     -e agent8_controller_url=https://jenkins.example.com/ -e agent8_dir=/opt/agent8
+#
+# Undo a --replace:  -e agent8_restore=/opt/jenkins/agent.jar
 - name: Install agent8
   hosts: "{{ agent8_hosts | default('jenkins_legacy_agents') }}"
   gather_facts: false
@@ -15,10 +23,13 @@
     agent8_dir: ""             # install dir (install.sh default /opt/agent8; with agent8_replace, unused unless set)
     agent8_java: ""            # default: $JAVA_HOME/bin/java, then java on PATH
     agent8_target: ""          # build to install: 8, 11 or 17 (default: from the host's Java)
-    agent8_from: ""            # offline: directory on the host with the agent8 jar(s) and jvmdg.jar
+    agent8_from: ""            # offline: directory on the host with the agent8 jar(s), jvmdg.jar and sha256sums.txt
+    agent8_cacert: ""          # CA bundle on the host, when its own is too old for github.com
+    agent8_repo: ""            # release source (default https://github.com/keelinfra/agent8), e.g. an internal mirror
+    agent8_restore: ""         # undo agent8_replace: put back this path's .before-agent8 jar; installs nothing
     agent8_restart: ""         # command that restarts the agent, run after the swap
   tasks:
-    - name: Install agent8 and swap the agent jar
+    - name: Install agent8 (checks it with --check) and swap the agent jar
       ansible.builtin.script: >-
         ../install.sh
         {% if agent8_dir %}--dir {{ agent8_dir | quote }}{% endif %}
@@ -28,6 +39,9 @@
         {% if agent8_java %}--java {{ agent8_java | quote }}{% endif %}
         {% if agent8_target %}--target {{ agent8_target | quote }}{% endif %}
         {% if agent8_from %}--from {{ agent8_from | quote }}{% endif %}
+        {% if agent8_cacert %}--cacert {{ agent8_cacert | quote }}{% endif %}
+        {% if agent8_repo %}--repo {{ agent8_repo | quote }}{% endif %}
+        {% if agent8_restore %}--restore {{ agent8_restore | quote }}{% endif %}
       register: agent8_install
       changed_when: true
 
