@@ -65,7 +65,8 @@ check "launcher copied the stock remoting.jar" on_agent \
 printf 'println System.getProperty("java.version")\n' > "$T/v.groovy"
 out=$(post --data-urlencode "script@$T/v.groovy" "$URL/computer/agent8-ssh/scriptText" || true)
 check "agent runs on Java 8 ($out)" test "${out:0:3}" = 1.8
-printf 'println java.security.MessageDigest.getInstance("KEELTEST").provider.name\n' > "$T/p.groovy"
+# getName(): a Provider is a Map, so Groovy reads .name as a map key.
+printf 'println java.security.MessageDigest.getInstance("KEELTEST").getProvider().getName()\n' > "$T/p.groovy"
 out=$(post --data-urlencode "script@$T/p.groovy" "$URL/computer/agent8-ssh/scriptText" 2>&1 || true)
 check "signed security provider loads ($out)" test "$out" = KeelTest
 
