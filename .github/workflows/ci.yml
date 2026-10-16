@@ -113,8 +113,13 @@ jobs:
   # The SSH Build Agents launcher, with Java Path set to the wrapper install.sh writes, on a
   # Java 8 host whose first security provider is a signed jar (as on Solaris).
   ssh:
-    name: SSH Build Agents launcher, signed security provider
+    name: SSH Build Agents launcher, signed security provider, ${{ matrix.jdk }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # OpenJ9: the JVM family of IBM Java 8 on AIX, whose IBMJCE provider is signed.
+        jdk: [eclipse-temurin:8-jdk, ibm-semeru-runtimes:open-8-jdk]
     steps:
       - uses: actions/checkout@v7
 
@@ -136,6 +141,8 @@ jobs:
 
       - name: SSH launcher test
         run: test/ssh.sh
+        env:
+          JDK8_IMAGE: ${{ matrix.jdk }}
 
       - name: Controller log
         if: failure()

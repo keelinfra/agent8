@@ -53,6 +53,8 @@ JVM_OPTIONS="-Djava.ext.dirs=$EXT:/opt/signed -Djava.security.properties=/signed
 on_agent "sh /install.sh --from /dist --java $JH/bin/java --dir /opt/agent8"
 check "install: Java Path wrapper written" on_agent 'test -x /opt/agent8/java'
 check "wrapper passes other commands through" on_agent '/opt/agent8/java -version 2>&1 | grep -q "version \"1.8"'
+check "--check: signed provider, key store and TLS work with both Java agents" on_agent \
+    "/opt/agent8/java $JVM_OPTIONS -jar /opt/agent8/agent8.jar --check | grep '^agent8 check: ok on'"
 
 sed "s|JVM_OPTIONS|$JVM_OPTIONS|" test/setup-ssh.groovy > "$T/setup.groovy"
 post --data-urlencode "script@$T/setup.groovy" "$URL/scriptText"
