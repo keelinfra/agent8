@@ -11,7 +11,8 @@
 #   --version V      remoting version to install instead of asking the controller
 #   --replace PATH   swap the agent.jar at PATH for agent8 (a backup is kept), so the
 #                    existing start command keeps working unchanged
-#   --dir DIR        where to install (default /opt/agent8; with --replace, only if given)
+#   --dir DIR        where to install (default /opt/agent8; with --replace, only if given).
+#                    DIR/java is for SSH agents: set it as the node's Java Path
 #   --from DIR       offline: take the agent8 jar and jvmdg.jar from DIR, download nothing
 #   --java PATH      java to use (default $JAVA_HOME/bin/java, then java on PATH)
 #   --target N       which build to install: 8, 11 or 17 (default: from the host's Java)
@@ -43,7 +44,7 @@ while [ $# -gt 0 ]; do
         --repo) REPO=$2; shift 2 ;;
         --cacert) CACERT=$2; shift 2 ;;
         --restore) RESTORE=$2; shift 2 ;;
-        -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
         *) echo "agent8: unknown option $1 (see --help)" >&2; exit 2 ;;
     esac
 done
@@ -256,7 +257,25 @@ say "$ASSET runs remoting $GOT on this host"
 if [ -z "$REPLACE" ] || [ -n "$DIR_SET" ]; then
     mkdir -p "$DIR"
     cp "$WORK/agent8.jar" "$WORK/jvmdg.jar" "$DIR/"
-    say "installed $DIR/agent8.jar and $DIR/jvmdg.jar"
+    # For the SSH Build Agents launcher, which copies the controller's remoting.jar to the
+    # host and runs "<Java Path> ... -jar remoting.jar" on every launch: set the node's
+    # Java Path to this file and it runs agent8.jar instead. ${1+"$@"}: Solaris 10's
+    # /bin/sh turns an empty "$@" into one empty argument.
+    case $JAVA in /*) ;; *) JAVA=$(pwd)/$JAVA ;; esac
+    cat > "$DIR/java.agent8-new" <<EOF
+#!/bin/sh
+# agent8 for the SSH Build Agents launcher: set the node's "Java Path" to this file.
+# It runs $DIR/agent8.jar where the launcher asks for remoting.jar.
+for a do
+    shift
+    case \$a in remoting.jar) a='$DIR/agent8.jar' ;; esac
+    set -- \${1+"\$@"} "\$a"
+done
+exec '$JAVA' \${1+"\$@"}
+EOF
+    chmod 755 "$DIR/java.agent8-new"
+    mv "$DIR/java.agent8-new" "$DIR/java"
+    say "installed $DIR/agent8.jar, $DIR/jvmdg.jar and $DIR/java (Java Path for SSH agents)"
 fi
 
 if [ -n "$REPLACE" ]; then
@@ -274,7 +293,8 @@ if [ -n "$REPLACE" ]; then
     mv "$target_dir/jvmdg.jar.agent8-new" "$target_dir/jvmdg.jar"
     say "replaced $REPLACE; restart the agent with its usual command"
 else
-    say "start the agent as usual, with this jar:"
+    say "inbound agent: start it as usual, with this jar:"
     say "  $JAVA -jar $DIR/agent8.jar -url <controller> -secret <secret> -name <node> -workDir <dir>"
+    say "SSH agent (SSH Build Agents launcher): set the node's Java Path to $DIR/java"
 fi
 say "Rolling this out to many hosts or to AIX/Solaris/HP-UX? Help and support: https://keelinfra.io/jenkins/pricing/"
