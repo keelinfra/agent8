@@ -31,6 +31,7 @@ import org.objectweb.asm.commons.SerialVersionUIDAdder;
  * <li>JDK classes that only exist in newer Java but appear in serialized data
  * ({@code java.util.CollSer}) are added to the bootstrap class path.</li>
  * <li>JvmDowngrader stubs that behave differently from the JDK are fixed, see {@link StubFixes}.</li>
+ * <li>JvmDowngrader keeps the signers of signed jars, see {@link SignedJars}.</li>
  * </ol>
  */
 public final class Agent8 implements ClassFileTransformer {
@@ -51,6 +52,14 @@ public final class Agent8 implements ClassFileTransformer {
 
     @Override
     public byte[] transform(ClassLoader loader, String name, Class<?> redefined, ProtectionDomain pd, byte[] bytes) {
+        if (SignedJars.applies(name)) {
+            try {
+                return SignedJars.patch(bytes);
+            } catch (RuntimeException | LinkageError e) {
+                System.err.println("[agent8] cannot fix " + name + ": " + e);
+                return null;
+            }
+        }
         if (StubFixes.applies(name)) {
             try {
                 return StubFixes.patch(bytes);

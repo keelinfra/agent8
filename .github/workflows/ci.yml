@@ -110,6 +110,37 @@ jobs:
             rm -f /usr/bin/curl /usr/bin/wget
             sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8-java --repo https://github.com/${{ github.repository }}'
 
+  # The SSH Build Agents launcher, with Java Path set to the wrapper install.sh writes, on a
+  # Java 8 host whose first security provider is a signed jar (as on Solaris).
+  ssh:
+    name: SSH Build Agents launcher, signed security provider
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Start controller
+        run: |
+          docker build --progress=plain -t controller --build-arg JENKINS_TAG=lts-jdk21 --build-arg PLUGINS=ssh-slaves \
+            -f test/Dockerfile.controller test
+          docker run -d --name controller --network host controller
+          for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
+          curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
+
+      - name: Build agent8 from the controller's agent.jar
+        run: ./build.sh agent.jar 8
+
+      - name: SSH launcher test
+        run: test/ssh.sh
+
+      - name: Controller log
+        if: failure()
+        run: docker logs controller 2>&1 | tail -200
+
   # An older agent8 release against the newest controller, as after a controller upgrade
   # without rerunning install.sh, on a controller without the versioncolumn plugin (whose
   # Remoting Version monitor would take such an agent offline). Only the latest release

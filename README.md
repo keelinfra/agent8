@@ -91,7 +91,15 @@ Its *Remoting Version* monitor also takes agents offline whose remoting version 
 
 `install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under `ksh` on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu; AIX, Solaris and HP-UX are untested. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
 
-The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has. Agents launched by the SSH Build Agents plugin are not supported yet: that plugin copies its own `remoting.jar` to the host and requires a newer Java; use inbound agents.
+The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has.
+
+**SSH agents (SSH Build Agents plugin).** That plugin copies the controller's stock `remoting.jar` to the agent's directory and runs `java -jar remoting.jar` on every launch, so replacing a jar on the host does not last. Install without `--replace`, then set one field on the node:
+
+```sh
+sh install.sh --url https://jenkins.example.com/ --dir /opt/agent8
+```
+
+*Manage Jenkins → Nodes → the node → Configure → Launch method → Advanced → Java Path*: `/opt/agent8/java`. That file, written by `install.sh`, runs the host's Java with `/opt/agent8/agent8.jar` where the plugin asks for `remoting.jar`, and passes everything else through. No *Prefix Start Agent Command* is needed. CI tests this with the SSH Build Agents plugin and a Java 8 host.
 
 ### Build it yourself
 
@@ -113,13 +121,16 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
    - It adds `java.util.CollSer`, the serial form of `List.of`, `Set.of`, `Map.of` and `Stream.toList()`, which Java 8 does not have. On Java 9 to 15 it teaches the JDK's own `CollSer` the form `Stream.toList()` uses since Java 16.
    - On OpenJ9 it adds a stand-in for HotSpot's internal `ClassLoader$ParallelLoaders`, which JvmDowngrader's `ClassLoader` stubs need.
    - It fixes JvmDowngrader stubs that behave differently from the JDK: `InputStream.readNBytes(int)` allocated the full length up front, so `readNBytes(Integer.MAX_VALUE)`, which JGit uses to read Git config files, failed on Java 8.
+   - It keeps signed jars working. JvmDowngrader drops the signers of every class loaded after it starts, so a signed jar that was already in use before that fails with "signer information does not match". On Solaris the first security provider (SunPKCS11 / OracleUcrypto) is such a jar, and the first TLS or digest call failed. agent8 and the classes the controller sends are not signed, so agent8 turns that part of JvmDowngrader off.
 
 ## Tests
 
 - `test/serialization.sh`: objects written on Java 21 are read on Java 8.
 - `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11 and 17), starts it with the usual command against a running controller and checks Pipeline builds, a Git checkout (JGit, i.e. plugin code from the controller running on old Java), `withCredentials`, abort, agent restart during a build, the script console, and `--replace`/`--restore`. With `BASIC=1` it runs against a bare controller (core only, freestyle shell build), for older Jenkins lines whose plugins no longer install.
 
-CI runs both weekly against the latest LTS and weekly Jenkins.
+- `test/ssh.sh`: an SSH Build Agents node with *Java Path* set to the file `install.sh` writes, on a Java 8 host whose first security provider is a signed jar (as on Solaris); checks that it comes online, the script console, the signed provider, and a freestyle build.
+
+CI runs these weekly against the latest LTS and weekly Jenkins (`test/ssh.sh` against the LTS).
 
 ## Releasing
 
