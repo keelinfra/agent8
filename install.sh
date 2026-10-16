@@ -251,6 +251,17 @@ if "$JAVA" -jar "$WORK/agent8.jar" -version > "$WORK/version.out" 2>&1; then :; 
 fi
 GOT=$(sed -n '$p' "$WORK/version.out")
 say "$ASSET runs remoting $GOT on this host"
+# With both Java agents active, load the security providers and the key store and TLS
+# context the agent needs: a signed provider broken by a Java agent (IBMJCE on IBM Java,
+# SunPKCS11 on Solaris) would otherwise only fail once the agent tries to connect.
+# (Builds from before 2026-10-16 do not know --check and print their usage instead.)
+"$JAVA" -jar "$WORK/agent8.jar" --check > "$WORK/check.out" 2>&1 || :
+if grep '^agent8 check: ok on' "$WORK/check.out" >/dev/null; then
+    say "security providers, key store and TLS work on this Java"
+elif grep '^agent8 check:' "$WORK/check.out" >/dev/null; then
+    grep '^agent8 check:' "$WORK/check.out" >&2
+    die "$ASSET cannot use this Java's security providers (above); please report it at https://github.com/keelinfra/agent8/issues"
+fi
 
 # With --replace the jar goes next to the old one; /opt/agent8 (often not writable by the
 # agent's user) is only written when asked for.
@@ -279,6 +290,11 @@ EOF
 fi
 
 if [ -n "$REPLACE" ]; then
+    case $REPLACE in
+        remoting.jar|*/remoting.jar)
+            say "warning: $REPLACE looks like the jar the SSH Build Agents launcher copies to the host;"
+            say "it overwrites it on every launch. For SSH agents use --dir and the node's Java Path instead." ;;
+    esac
     target_dir=$(dirname "$REPLACE")
     [ -d "$target_dir" ] || die "$target_dir does not exist"
     # Copy next to the target, then rename over it: a running agent keeps the old file

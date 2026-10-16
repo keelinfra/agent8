@@ -3,8 +3,13 @@ package io.keelinfra.agent8;
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.Provider;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.List;
+import javax.net.ssl.SSLContext;
 import java.util.jar.JarFile;
 
 /**
@@ -15,6 +20,10 @@ import java.util.jar.JarFile;
  * JVM was not started with them, this starts the same Java again with
  * {@code -javaagent:agent8.jar -javaagent:jvmdg.jar} and the same JVM options,
  * and waits for it. Otherwise it runs remoting's launcher directly.
+ *
+ * <p>{@code java -jar agent8.jar --check} checks, with both Java agents active, what the agent
+ * needs from the JVM before it can connect (security providers, key stores, TLS); install.sh
+ * runs it.
  */
 public final class Main {
 
@@ -26,6 +35,9 @@ public final class Main {
             return;
         }
         if (Agent8.active && jvmdgActive()) {
+            if (args.length == 1 && args[0].equals("--check")) {
+                System.exit(check());
+            }
             hudson.remoting.Launcher.main(args);
             return;
         }
@@ -84,6 +96,53 @@ public final class Main {
                     + self.getName() + " or set -Dagent8.jvmdg=/path/to/jvmdg.jar");
         }
         return f;
+    }
+
+    /**
+     * Loads every security provider's classes and the key store and TLS context remoting uses.
+     * Signed provider jars (IBMJCE on IBM Java, SunPKCS11 on Solaris) fail here with "signer
+     * information does not match" if a Java agent broke them, before the agent ever connects.
+     *
+     * @return the exit code: 0 if everything works
+     */
+    static int check() {
+        int failures = 0;
+        for (Provider p : Security.getProviders()) {
+            ClassLoader loader = p.getClass().getClassLoader();
+            for (Provider.Service s : p.getServices()) {
+                try {
+                    Class.forName(s.getClassName(), true, loader);
+                } catch (ClassNotFoundException e) {
+                    // listed but not shipped in this JDK build: not used, not a problem
+                } catch (SecurityException | LinkageError e) {
+                    failures++;
+                    System.out.println("agent8 check: FAIL " + p.getName() + " " + s.getType() + "." + s.getAlgorithm() + ": " + e);
+                }
+            }
+        }
+        String[][] steps = {{"KeyStore", "JKS"}, {"KeyStore", KeyStore.getDefaultType()}, {"MessageDigest", "SHA-256"}, {"SSLContext", "Default"}};
+        for (String[] step : steps) {
+            try {
+                String provider;
+                if (step[0].equals("KeyStore")) {
+                    provider = KeyStore.getInstance(step[1]).getProvider().getName();
+                } else if (step[0].equals("MessageDigest")) {
+                    provider = MessageDigest.getInstance(step[1]).getProvider().getName();
+                } else {
+                    provider = SSLContext.getDefault().getProvider().getName();
+                }
+                System.out.println("agent8 check: ok   " + step[0] + "." + step[1] + " (" + provider + ")");
+            } catch (Exception | LinkageError e) {
+                failures++;
+                System.out.println("agent8 check: FAIL " + step[0] + "." + step[1] + ": " + e);
+                for (Throwable c = e.getCause(); c != null; c = c.getCause()) {
+                    System.out.println("agent8 check:      caused by " + c);
+                }
+            }
+        }
+        System.out.println("agent8 check: " + (failures == 0 ? "ok" : failures + " failure(s)") + " on "
+                + System.getProperty("java.vm.name") + " " + System.getProperty("java.runtime.version"));
+        return failures == 0 ? 0 : 1;
     }
 
     /** Reads the remoting version of an agent.jar; works on Java 8 although its classes are newer. */

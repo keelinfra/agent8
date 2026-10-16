@@ -35,12 +35,13 @@ Available and free to use (MIT). Linux is tested in CI on every change, and week
 |---|---|
 | Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | Tested in CI on CentOS 6.10 |
 | Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI; best effort (see below) |
-| AIX 7.1 / 7.2 with IBM Java 8 | Experimental: not yet run on real AIX |
-| Solaris, HP-UX with Java 8 | Experimental: not tested |
+| AIX 7.1 / 7.2 with IBM Java 8 | Experimental: first run on real AIX 7.1 found a signed-provider failure (fixed, see below); builds on AIX not yet confirmed |
+| Solaris with Java 8 | Experimental: installs and starts over SSH on real Solaris; the signed-provider failure found there is fixed; builds not yet confirmed |
+| HP-UX with Java 8 | Experimental: not tested |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
 | Linux, HotSpot Java 17 (`agent8-java17.jar`) | Tested in CI against the current LTS |
 
-**OpenJ9 and IBM Java (J9) are outside Jenkins' own support:** the Jenkins Platform SIG [stopped supporting OpenJ9](https://github.com/jenkinsci/remoting/issues/1223#issuecomment-3577915365) in 2021, and the Jenkins issue tracker has a history of J9-specific problems. On AIX, IBM Java 8 is often the only Java there is, so agent8 tests OpenJ9 8 in CI and fixes J9-specific failures it finds (one so far, in JvmDowngrader), but support for J9 is best effort. Please report J9 problems [here](https://github.com/keelinfra/agent8/issues), not to Jenkins.
+**OpenJ9 and IBM Java (J9) are outside Jenkins' own support:** the Jenkins Platform SIG [stopped supporting OpenJ9](https://github.com/jenkinsci/remoting/issues/1223#issuecomment-3577915365) in 2021, and the Jenkins issue tracker has a history of J9-specific problems. On AIX, IBM Java 8 is often the only Java there is, so agent8 tests OpenJ9 8 in CI and fixes J9-specific failures it finds (two so far, both in JvmDowngrader), but support for J9 is best effort. Please report J9 problems [here](https://github.com/keelinfra/agent8/issues), not to Jenkins.
 
 Java 8 is the main target. The same build also makes jars for hosts capped at Java 11 (Solaris SPARC and x86 stop at JDK 11, since JDK 15 dropped those ports) and Java 17.
 
@@ -53,7 +54,7 @@ curl -fsSLO https://raw.githubusercontent.com/keelinfra/agent8/main/install.sh
 sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 ```
 
-`install.sh` asks the controller for its remoting version, downloads the matching agent8 jar for the host's Java (`agent8-java8.jar`, `agent8-java11.jar` or `agent8-java17.jar`) and `jvmdg.jar` from this repository's releases, checks them against the release's `sha256sums.txt` (with `sha256sum`, `shasum`, `digest` or `openssl`, or with Java when the host has none of these), checks that they start with the host's Java, and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
+`install.sh` asks the controller for its remoting version, downloads the matching agent8 jar for the host's Java (`agent8-java8.jar`, `agent8-java11.jar` or `agent8-java17.jar`) and `jvmdg.jar` from this repository's releases, checks them against the release's `sha256sums.txt` (with `sha256sum`, `shasum`, `digest` or `openssl`, or with Java when the host has none of these), checks that they start with the host's Java and can use its security providers, key store and TLS (`java -jar agent8.jar --check`, which you can also run yourself), and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
 
 ```sh
 java -jar /path/to/agent.jar -url https://jenkins.example.com/ -secret <secret> -name <node> -workDir /srv/jenkins
@@ -99,7 +100,21 @@ The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and
 sh install.sh --url https://jenkins.example.com/ --dir /opt/agent8
 ```
 
-*Manage Jenkins → Nodes → the node → Configure → Launch method → Advanced → Java Path*: `/opt/agent8/java`. That file, written by `install.sh`, runs the host's Java with `/opt/agent8/agent8.jar` where the plugin asks for `remoting.jar`, and passes everything else through. No *Prefix Start Agent Command* is needed. CI tests this with the SSH Build Agents plugin and a Java 8 host.
+*Manage Jenkins → Nodes → the node → Configure → Launch method → Advanced → Java Path*: `/opt/agent8/java`. That file, written by `install.sh`, runs the host's Java with `/opt/agent8/agent8.jar` where the plugin asks for `remoting.jar`, and passes everything else through. No *Prefix Start Agent Command* is needed, and the node's other settings (JVM options, remote root directory, credentials) stay as they are. CI tests this with the SSH Build Agents plugin on HotSpot 8 and OpenJ9 8.
+
+**A host that already serves another controller** (for example while moving jobs from an old controller to a new one): install with its own `--dir` and give the new node its own remote root directory (`-workDir`), so the two agents share nothing. Do not `--replace` the jar the other agent runs, and never the `remoting.jar` an SSH launcher copies (`install.sh` warns about that name).
+
+### Troubleshooting
+
+| You see | Cause and fix |
+|---|---|
+| `curl: (60) SSL certificate problem` when fetching `install.sh` | The host's CA bundle is too old. Copy `install.sh` from a current machine or use `curl --cacert FILE`; never `-k`. |
+| `UnsupportedClassVersionError ... class file version 55.0` (or 61, 65) on an SSH node | The SSH launcher copied the stock `remoting.jar` again. Set the node's *Java Path* to `DIR/java` (above). |
+| `signer information does not match` / `Signers of ... do not match`, `jks not found` | A signed security provider (IBMJCE on IBM Java, SunPKCS11 on Solaris) broken by JvmDowngrader. Fixed since [#9](https://github.com/keelinfra/agent8/pull/9); rerun `install.sh` to get a release with the fix. |
+| The node goes offline seconds after connecting, "incompatible JVM version" | The versioncolumn plugin's JVM Version monitor; set it not to disconnect (above). |
+| `Agent version ... or newer is required` | The controller was upgraded past this build; rerun `install.sh`. |
+
+`java -jar agent8.jar --check` prints what works and what does not on a host, without connecting to anything; please include its output, `java -version` and the OS version (`oslevel -s`, `uname -a`) when you [report a problem](https://github.com/keelinfra/agent8/issues).
 
 ### Build it yourself
 
@@ -121,14 +136,14 @@ Jenkins agents run two kinds of Java code: remoting itself (`agent.jar`), and cl
    - It adds `java.util.CollSer`, the serial form of `List.of`, `Set.of`, `Map.of` and `Stream.toList()`, which Java 8 does not have. On Java 9 to 15 it teaches the JDK's own `CollSer` the form `Stream.toList()` uses since Java 16.
    - On OpenJ9 it adds a stand-in for HotSpot's internal `ClassLoader$ParallelLoaders`, which JvmDowngrader's `ClassLoader` stubs need.
    - It fixes JvmDowngrader stubs that behave differently from the JDK: `InputStream.readNBytes(int)` allocated the full length up front, so `readNBytes(Integer.MAX_VALUE)`, which JGit uses to read Git config files, failed on Java 8.
-   - It keeps signed jars working. JvmDowngrader drops the signers of every class loaded after it starts, so a signed jar that was already in use before that fails with "signer information does not match". On Solaris the first security provider (SunPKCS11 / OracleUcrypto) is such a jar, and the first TLS or digest call failed. agent8 and the classes the controller sends are not signed, so agent8 turns that part of JvmDowngrader off.
+   - It keeps signed jars working. JvmDowngrader drops the signers of every class loaded after it starts, so a signed jar that was already in use before that fails with "signer information does not match". Security providers are such jars: SunPKCS11 / OracleUcrypto on Solaris (the first TLS or digest call failed), and IBMJCE on IBM Java, the only provider of the `JKS` key store there (remoting could not build its TLS context, so the agent never connected). agent8 and the classes the controller sends are not signed, so agent8 turns that part of JvmDowngrader off.
 
 ## Tests
 
 - `test/serialization.sh`: objects written on Java 21 are read on Java 8.
 - `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11 and 17), starts it with the usual command against a running controller and checks Pipeline builds, a Git checkout (JGit, i.e. plugin code from the controller running on old Java), `withCredentials`, abort, agent restart during a build, the script console, and `--replace`/`--restore`. With `BASIC=1` it runs against a bare controller (core only, freestyle shell build), for older Jenkins lines whose plugins no longer install.
 
-- `test/ssh.sh`: an SSH Build Agents node with *Java Path* set to the file `install.sh` writes, on a Java 8 host whose first security provider is a signed jar (as on Solaris); checks that it comes online, the script console, the signed provider, and a freestyle build.
+- `test/ssh.sh`: an SSH Build Agents node with *Java Path* set to the file `install.sh` writes, on a HotSpot 8 and an OpenJ9 8 host whose first security provider is a signed jar (as on Solaris and IBM Java); checks `--check`, that the node comes online, the script console, the signed provider, and a freestyle build.
 
 CI runs these weekly against the latest LTS and weekly Jenkins (`test/ssh.sh` against the LTS).
 
@@ -138,8 +153,8 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 
 ## Known gaps
 
-- A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker or command-line git, still need testing.
-- AIX with IBM Java 8 is untested on real hardware; OpenJ9 on Linux covers the JVM but not AIX itself.
+- A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker, artifact repository upload steps (Artifactory, Nexus) or command-line git, still need testing. Try those on one host before moving a whole job.
+- AIX with IBM Java 8: the first real run (AIX 7.1, IBM Java 8 SR6) found the signed-provider failure above, now fixed; a full build on AIX is not confirmed yet. OpenJ9 on Linux covers the JVM but not IBM's own providers or AIX itself.
 - On AIX, Jenkins code on the agent loads JNA (for example to kill a build's processes on abort); whether its AIX native library loads is checked only on the first real AIX run ([#2](https://github.com/keelinfra/agent8/issues/2)). The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
 
 ## License
