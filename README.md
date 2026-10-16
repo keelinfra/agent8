@@ -29,7 +29,7 @@ On RHEL/CentOS 6 x86_64, try a newer JDK first. The OS repositories stop at Open
 
 ## Status
 
-Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release. On real Solaris, agent8 connects over SSH; builds there, and AIX and HP-UX, are still experimental.
+Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release. On real Solaris and HP-UX hosts, agent8 installs and connects over SSH; builds there, and AIX, are still experimental.
 
 | Agent platform | Status |
 |---|---|
@@ -37,7 +37,7 @@ Available and free to use (MIT). Linux is tested in CI on every change, and week
 | Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI; best effort (see below) |
 | AIX 7.1 / 7.2 with IBM Java 8 | Experimental: first run on real AIX 7.1 found a signed-provider failure (fixed, see below); builds on AIX not yet confirmed |
 | Solaris with Java 8 | Experimental: installs, passes `--check` and connects over SSH on real Solaris (Oracle Java 8u60); builds not yet confirmed |
-| HP-UX with Java 8 | Experimental: not tested |
+| HP-UX with Java 8 | Experimental: installs, passes `--check` and connects over SSH on real HP-UX (Itanium, HP Java 8, 32-bit); builds not yet confirmed |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
 | Linux, HotSpot Java 17 (`agent8-java17.jar`) | Tested in CI against the current LTS |
 
@@ -90,7 +90,7 @@ Its *Remoting Version* monitor also takes agents offline whose remoting version 
 
 **The old jar.** On the first `--replace`, the host's original jar is renamed to `agent.jar.before-agent8` (a later run never overwrites it), and agent8 is moved into place under the original name, so a running agent keeps its open file. `sh install.sh --restore /path/to/agent.jar` puts the original back and removes `jvmdg.jar`. Keep the backup until the agent has run builds for a while, then delete it.
 
-`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under `ksh` on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu; AIX, Solaris and HP-UX are untested. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
+`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under `ksh` on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu, and it has run on real Solaris and HP-UX; AIX is untested. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
 
 The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has.
 
@@ -100,7 +100,7 @@ The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and
 sh install.sh --url https://jenkins.example.com/ --dir /opt/agent8
 ```
 
-*Manage Jenkins → Nodes → the node → Configure → Launch method → Advanced → Java Path*: `/opt/agent8/java`. That file, written by `install.sh`, runs the host's Java with `/opt/agent8/agent8.jar` where the plugin asks for `remoting.jar`, and passes everything else through. No *Prefix Start Agent Command* is needed, and the node's other settings (JVM options, remote root directory, credentials) stay as they are. CI tests this with the SSH Build Agents plugin on HotSpot 8 and OpenJ9 8.
+*Manage Jenkins → Nodes → the node → Configure → Launch method → Advanced → Java Path*: `/opt/agent8/java`. This is the file `install.sh` wrote, not the host's own `java` (not `/usr/bin/java`, and not empty). The launch log shows which one ran: `Starting agent process: cd "..." && /opt/agent8/java -jar remoting.jar` is right. That file, written by `install.sh`, runs the host's Java with `/opt/agent8/agent8.jar` where the plugin asks for `remoting.jar`, and passes everything else through. No *Prefix Start Agent Command* is needed, and the node's other settings (JVM options, remote root directory, credentials) stay as they are. CI tests this with the SSH Build Agents plugin on HotSpot 8 and OpenJ9 8.
 
 **A host that already serves another controller** (for example while moving jobs from an old controller to a new one): install with its own `--dir` and give the new node its own remote root directory (`-workDir`), so the two agents share nothing. Do not `--replace` the jar the other agent runs, and never the `remoting.jar` an SSH launcher copies (`install.sh` warns about that name).
 
@@ -109,7 +109,9 @@ sh install.sh --url https://jenkins.example.com/ --dir /opt/agent8
 | You see | Cause and fix |
 |---|---|
 | `curl: (60) SSL certificate problem` when fetching `install.sh` | The host's CA bundle is too old. Copy `install.sh` from a current machine or use `curl --cacert FILE`; never `-k`. |
-| `UnsupportedClassVersionError ... class file version 55.0` (or 61, 65) on an SSH node | The SSH launcher copied the stock `remoting.jar` again. Set the node's *Java Path* to `DIR/java` (above). |
+| `UnsupportedClassVersionError ... class file version 55.0` (or 61, 65) on an SSH node | The host's own Java ran the stock `remoting.jar`: the launch log shows `&& java -jar remoting.jar` or `&& /usr/bin/java -jar remoting.jar`. Set the node's *Java Path* to `DIR/java`, the file `install.sh` wrote (above). |
+| `ERROR: Already connected`, then "Launch failed" | A second launch of the same node started while the first was still coming up, and the first one won; the node is usually online. The first start on a slow host takes a minute or more while JvmDowngrader prepares its own jar ("this may take a minute"); later starts are fast. Click *Launch agent* once and wait. |
+| `Failed to monitor for Free Swap Space`, `No suitable implementation found: os.name=HP-UX` | Jenkins' swap monitor has no HP-UX implementation; the stock agent shows the same. Harmless: only that column stays empty. |
 | `signer information does not match` / `Signers of ... do not match`, `jks not found` | A signed security provider (IBMJCE on IBM Java, SunPKCS11 on Solaris) broken by JvmDowngrader. Fixed since [#9](https://github.com/keelinfra/agent8/pull/9); rerun `install.sh` to get a release with the fix. |
 | The node goes offline seconds after connecting, "incompatible JVM version" | The versioncolumn plugin's JVM Version monitor; set it not to disconnect (above). |
 | `Agent version ... or newer is required` | The controller was upgraded past this build; rerun `install.sh`. |
