@@ -53,6 +53,8 @@ curl -fsSLO https://raw.githubusercontent.com/keelinfra/agent8/main/install.sh
 sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 ```
 
+If that `curl` fails with `SSL certificate problem: unable to get local issuer certificate`, the host's CA bundle is too old to verify GitHub, which is common on old hosts. Do not turn verification off (`-k`). Download `install.sh` on a current machine and copy it over (`scp install.sh host:`), or point curl at a current bundle, for example one copied from a current machine (`curl --cacert cacert.pem ...`; `install.sh --cacert FILE` passes it on). `install.sh` itself falls back to Java's own trust store when curl or wget cannot verify a download. If that fails too, or the host has no internet access, download the release files elsewhere and use `--from DIR` (below).
+
 `install.sh` asks the controller for its remoting version, downloads the matching agent8 jar for the host's Java (`agent8-java8.jar`, `agent8-java11.jar` or `agent8-java17.jar`) and `jvmdg.jar` from this repository's releases, checks them against the release's `sha256sums.txt` (with `sha256sum`, `shasum`, `digest` or `openssl`, or with Java when the host has none of these), checks that they start with the host's Java, and swaps them in for the `agent.jar` the host runs today (the old jar is kept as `agent.jar.before-agent8`). Restart the agent with its usual command, for example:
 
 ```sh
@@ -62,8 +64,6 @@ java -jar /path/to/agent.jar -url https://jenkins.example.com/ -secret <secret> 
 Releases are named after the Jenkins version: `jenkins-2.580.1` is agent8 for Jenkins 2.580.1 (your version is at the bottom right of every Jenkins page). What has to match underneath is the agent's remoting version, and several Jenkins versions can ship the same one, so a release also works with every other Jenkins version that ships its remoting version; the release notes name it. You rarely need to pick by hand: `install.sh --url` asks the controller for its remoting version and finds the matching release through `index.txt` on the latest release (one line per release: remoting version, tag).
 
 Nothing else changes: the agent8 jar starts the Java agents it needs itself. With `--replace` it writes only next to the old jar, so it runs as the agent's own user; without it, it installs to `/opt/agent8` (`--dir`). Hosts without internet access: download the agent8 jars, `jvmdg.jar` and `sha256sums.txt` from the [releases](https://github.com/keelinfra/agent8/releases) and pass `--from DIR`. `--target 8|11|17` (Ansible: `agent8_target`) picks a build instead of going by the host's Java. `sh install.sh --help` lists all options.
-
-Old hosts often have a CA bundle too old to verify github.com (`curl: (60) SSL certificate problem`). Do not turn verification off. `install.sh` downloads the release files with Java's own trust store when curl or wget cannot verify them; to fetch `install.sh` itself, copy it from a current machine (`scp install.sh host:`), or point curl at a current bundle (`curl --cacert /path/to/cacert.pem ...`, also `install.sh --cacert FILE`). Fully offline hosts use `--from DIR`. The script is plain `sh` for RHEL 6, AIX, Solaris and HP-UX.
 
 For many hosts, the Ansible playbook runs the same script and needs no Python on the hosts:
 
