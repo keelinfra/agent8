@@ -29,14 +29,14 @@ On RHEL/CentOS 6 x86_64, try a newer JDK first. The OS repositories stop at Open
 
 ## Status
 
-Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release; AIX, Solaris and HP-UX are still experimental.
+Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release. On real Solaris, agent8 connects over SSH; builds there, and AIX and HP-UX, are still experimental.
 
 | Agent platform | Status |
 |---|---|
 | Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | Tested in CI on CentOS 6.10 |
 | Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI; best effort (see below) |
 | AIX 7.1 / 7.2 with IBM Java 8 | Experimental: first run on real AIX 7.1 found a signed-provider failure (fixed, see below); builds on AIX not yet confirmed |
-| Solaris with Java 8 | Experimental: installs and starts over SSH on real Solaris; the signed-provider failure found there is fixed; builds not yet confirmed |
+| Solaris with Java 8 | Experimental: installs, passes `--check` and connects over SSH on real Solaris (Oracle Java 8u60); builds not yet confirmed |
 | HP-UX with Java 8 | Experimental: not tested |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
 | Linux, HotSpot Java 17 (`agent8-java17.jar`) | Tested in CI against the current LTS |
