@@ -6,6 +6,7 @@
 #
 # targets: Java versions to build for, from 8, 11 and 17 (default: 8).
 # Output in dist/: agent8-java8.jar, agent8-java11.jar, agent8-java17.jar (as requested on the command line), and jvmdg.jar.
+# Each agent8 jar gets a CycloneDX SBOM next to it (agent8-javaN.cdx.json, see tools/sbom.py).
 # Every jar runs on its target Java and anything newer.
 # Needs JDK 17+, git, curl, unzip, python3.
 set -euo pipefail
@@ -128,6 +129,7 @@ with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
 src.close()
 os.replace(tmp, jar)
 PY
-    echo "built $out (Java $target and newer) for remoting $VERSION"
+    python3 "$ROOT/tools/sbom.py" "$out" "$WORK/agent.jar" "$WORK/deps" "${out%.jar}.cdx.json"
+    echo "built $out (Java $target and newer) for remoting $VERSION, SBOM ${out%.jar}.cdx.json"
 done
 echo "run (jvmdg.jar next to the jar): java -jar agent8-javaN.jar -url ... -secret ... -name ..."

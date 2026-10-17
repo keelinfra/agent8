@@ -153,7 +153,7 @@ CI runs these weekly against the latest LTS and weekly Jenkins (`test/ssh.sh` ag
 
 ## Releasing
 
-Run the **Release** workflow (Actions → Release → Run workflow). By default it builds and tests the current Jenkins LTS and weekly, then publishes one release per Jenkins version (tag `jenkins-<version>`) with all three jars and `sha256sums.txt`, and refreshes `index.txt` on the latest release; list other Jenkins image tags to release older versions, or tick *dry run* to build and test only. Older Jenkins lines whose plugins no longer install (for example `2.462.3-lts-jdk17`) go in the *basic* field: they are tested against a bare controller with a freestyle shell build, and their release notes say so. CI itself does not publish; a weekly *Remoting check* workflow opens an issue when the current LTS or weekly ships a remoting version that has no release yet.
+Run the **Release** workflow (Actions → Release → Run workflow). By default it builds and tests the current Jenkins LTS and weekly, then publishes one release per Jenkins version (tag `jenkins-<version>`) with all three jars, a CycloneDX SBOM per jar, `sha256sums.txt` and signed attestations (see [SECURITY.md](SECURITY.md#checking-a-release)), and refreshes `index.txt` on the latest release; list other Jenkins image tags to release older versions, or tick *dry run* to build and test only. Older Jenkins lines whose plugins no longer install (for example `2.462.3-lts-jdk17`) go in the *basic* field: they are tested against a bare controller with a freestyle shell build, and their release notes say so. CI itself does not publish; a weekly *Remoting check* workflow opens an issue when the current LTS or weekly ships a remoting version that has no release yet.
 
 ## Known gaps
 

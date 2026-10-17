@@ -46,6 +46,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Signed build-provenance and SBOM attestations (Sigstore, via GitHub).
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       max-parallel: 1  # two Jenkins versions can share a remoting version, so one release
@@ -54,9 +57,9 @@ jobs:
     env:
       BASIC: ${{ matrix.jenkins.basic }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad  # v6.1.0
         with:
           distribution: temurin
           java-version: 21
@@ -71,7 +74,7 @@ jobs:
           echo "JENKINS_VERSION=$(curl -fsSI localhost:8080/login | sed -n 's/^X-Jenkins: *//Ip' | tr -d '\r')" >> "$GITHUB_ENV"
 
       - name: Build agent8-java8.jar, agent8-java11.jar and agent8-java17.jar
-        run: ./build.sh agent.jar 8 11 17
+        run: AGENT8_VERSION=jenkins-$JENKINS_VERSION ./build.sh agent.jar 8 11 17
 
       - name: Test HotSpot 8 on CentOS 6
         run: |
@@ -106,12 +109,41 @@ jobs:
         run: docker logs controller 2>&1 | tail -200
 
       - name: Checksums
-        run: cd dist && sha256sum *.jar > sha256sums.txt && cat sha256sums.txt
+        run: cd dist && sha256sum *.jar *.cdx.json > sha256sums.txt && cat sha256sums.txt
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: agent8-jenkins-${{ env.JENKINS_VERSION }}
           path: dist/
+
+      # Anyone can check a jar came unmodified from this workflow:
+      #   gh attestation verify agent8-java8.jar --repo keelinfra/agent8
+      - name: Attest build provenance
+        if: ${{ !inputs.dry_run }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-path: dist/*.jar
+
+      - name: Attest SBOM (Java 8)
+        if: ${{ !inputs.dry_run }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-path: dist/agent8-java8.jar
+          sbom-path: dist/agent8-java8.cdx.json
+
+      - name: Attest SBOM (Java 11)
+        if: ${{ !inputs.dry_run }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-path: dist/agent8-java11.jar
+          sbom-path: dist/agent8-java11.cdx.json
+
+      - name: Attest SBOM (Java 17)
+        if: ${{ !inputs.dry_run }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-path: dist/agent8-java17.jar
+          sbom-path: dist/agent8-java17.cdx.json
 
       - name: Publish release
         if: ${{ !inputs.dry_run }}
@@ -132,14 +164,16 @@ jobs:
           | 17 and newer | agent8-java17.jar |
 
           Install: \`sh install.sh --url <controller>\` picks the right jar, see the README.
-          jvmdg.jar is JvmDowngrader 2.0.1, unmodified, LGPL-2.1. Checksums: sha256sums.txt."
+          jvmdg.jar is JvmDowngrader 2.0.1, unmodified, LGPL-2.1. Checksums: sha256sums.txt. SBOM (CycloneDX): agent8-javaN.cdx.json, one per jar.
+
+          Check a jar came unmodified from this repository's release workflow: \`gh attestation verify agent8-java8.jar --repo $GITHUB_REPOSITORY\`. Security support: [SECURITY.md](https://github.com/$GITHUB_REPOSITORY/blob/main/SECURITY.md)."
           # The tag marks the commit this release was built from.
           git tag -f "$tag" && git push -f origin "refs/tags/$tag"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/*.jar dist/sha256sums.txt --clobber
+            gh release upload "$tag" dist/*.jar dist/*.cdx.json dist/sha256sums.txt --clobber
             gh release edit "$tag" --title "$title" --notes "$notes"
           else
-            gh release create "$tag" dist/*.jar dist/sha256sums.txt --title "$title" --notes "$notes" --latest=false
+            gh release create "$tag" dist/*.jar dist/*.cdx.json dist/sha256sums.txt --title "$title" --notes "$notes" --latest=false
           fi
           if [ "${{ matrix.jenkins.tag }}" = "${{ inputs.latest }}" ]; then gh release edit "$tag" --latest; fi
           # index.txt on the latest release: newest release first for each remoting version.
