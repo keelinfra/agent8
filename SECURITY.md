@@ -21,7 +21,7 @@ Fixes ship in a new release for each supported Jenkins version; rerun `install.s
 
 ## Checking a release
 
-Every release carries `sha256sums.txt`, a CycloneDX SBOM per jar (`agent8-javaN.cdx.json`), and signed build-provenance and SBOM attestations. To check a jar came unmodified from this repository's release workflow:
+Every release carries `sha256sums.txt`. Releases published from 17 October 2026 on also carry a CycloneDX SBOM per jar (`agent8-javaN.cdx.json`) and signed build-provenance and SBOM attestations; earlier releases have only the checksums until they are re-released. To check a jar came unmodified from this repository's release workflow:
 
 ```sh
 gh attestation verify agent8-java8.jar --repo keelinfra/agent8
