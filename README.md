@@ -75,7 +75,7 @@ ansible-playbook -i inventory ansible/agent8.yml \
   -e "agent8_restart='/etc/init.d/jenkins-agent restart'"
 ```
 
-For SSH agents pass `-e agent8_dir=/opt/agent8` instead of `agent8_replace` and set each node's *Java Path* to `/opt/agent8/java` (see SSH agents below); Jenkins relaunches them, so no restart command is needed. The other options map one to one: `agent8_from`, `agent8_cacert`, `agent8_repo`, `agent8_java`, `agent8_target`, and `agent8_restore` to undo a swap.
+For SSH agents pass `-e agent8_dir=/opt/agent8` instead of `agent8_replace` and set each node's *Java Path* to `/opt/agent8/java` (see SSH agents below); Jenkins relaunches them, so no restart command is needed. The other options map one to one: `agent8_version`, `agent8_from`, `agent8_cacert`, `agent8_repo`, `agent8_java`, `agent8_target`, and `agent8_restore` to undo a swap.
 
 **Controller setting, if the Versions Node Monitors plugin (`versioncolumn`) is installed.** Its *JVM Version* monitor takes every agent whose Java is older than the controller's offline, seconds after it connects ("incompatible JVM version between agent and controller"). For agent8 hosts, set it to not disconnect under *Manage Jenkins → Nodes → Configure Node Monitors*, or in configuration as code:
 
@@ -92,7 +92,7 @@ Its *Remoting Version* monitor also takes agents offline whose remoting version 
 
 **The old jar.** On the first `--replace`, the host's original jar is renamed to `agent.jar.before-agent8` (a later run never overwrites it), and agent8 is moved into place under the original name, so a running agent keeps its open file. `sh install.sh --restore /path/to/agent.jar` puts the original back and removes `jvmdg.jar`. Keep the backup until the agent has run builds for a while, then delete it.
 
-`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under `ksh` on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu, and it has run on real Solaris and HP-UX; AIX is untested. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
+`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under a POSIX shell (`/usr/xpg4/bin/sh`, else `ksh`) on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu, and it has run on real Solaris and HP-UX; AIX is untested. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
 
 The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has.
 
