@@ -29,13 +29,13 @@ On RHEL/CentOS 6 x86_64, try a newer JDK first. The OS repositories stop at Open
 
 ## Status
 
-Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release. On real Solaris and HP-UX hosts, agent8 installs and connects over SSH; builds there, and AIX, are still experimental.
+Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release. On real Solaris and HP-UX hosts, agent8 installs and connects over SSH, and it connects on real AIX; builds on all three are still experimental.
 
 | Agent platform | Status |
 |---|---|
 | Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | Tested in CI on CentOS 6.10 |
 | Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI; best effort (see below) |
-| AIX 7.1 / 7.2 with IBM Java 8 | Experimental: first run on real AIX 7.1 found a signed-provider failure (fixed, see below); builds on AIX not yet confirmed |
+| AIX 7.1 / 7.2 with IBM Java 8 | Experimental: connects on real AIX with IBM Java 8 (the first run found a signed-provider failure, fixed, see below); builds not yet confirmed |
 | Solaris with Java 8 | Experimental: installs, passes `--check` and connects over SSH on real Solaris (Oracle Java 8u60); builds not yet confirmed |
 | HP-UX with Java 8 | Experimental: installs, passes `--check` and connects over SSH on real HP-UX (Itanium, HP Java 8, 32-bit); builds not yet confirmed |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
@@ -158,7 +158,7 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 ## Known gaps
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker, artifact repository upload steps (Artifactory, Nexus) or command-line git, still need testing. Try those on one host before moving a whole job.
-- AIX with IBM Java 8: the first real run (AIX 7.1, IBM Java 8 SR6) found the signed-provider failure above, now fixed; a full build on AIX is not confirmed yet. OpenJ9 on Linux covers the JVM but not IBM's own providers or AIX itself.
+- AIX with IBM Java 8: the first real run (AIX 7.1, IBM Java 8 SR6) found the signed-provider failure above, now fixed, and agent8 now connects there; a full build on AIX is not confirmed yet. OpenJ9 on Linux covers the JVM but not IBM's own providers or AIX itself.
 - On AIX, Jenkins code on the agent loads JNA (for example to kill a build's processes on abort); whether its AIX native library loads is checked only on the first real AIX run ([#2](https://github.com/keelinfra/agent8/issues/2)). The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
 
 ## License
