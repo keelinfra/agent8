@@ -158,7 +158,7 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 ## Known gaps
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker, artifact repository upload steps (Artifactory, Nexus) or command-line git, still need testing. Try those on one host before moving a whole job.
-- On AIX, Jenkins code on the agent loads JNA (for example to kill a build's processes on abort); see [#2](https://github.com/keelinfra/agent8/issues/2). The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
+- On AIX, aborting a build (which kills its processes through JNA) has not been verified yet. The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
 
 ## License
 
