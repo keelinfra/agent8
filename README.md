@@ -29,15 +29,15 @@ On RHEL/CentOS 6 x86_64, try a newer JDK first. The OS repositories stop at Open
 
 ## Status
 
-Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release. On real Solaris and HP-UX hosts, agent8 installs and connects over SSH, and it connects on real AIX; builds on all three are still experimental.
+Available and free to use (MIT). Linux is tested in CI on every change, and weekly, against the current Jenkins LTS and weekly release. agent8 has also been tested on real AIX, Solaris and HP-UX hosts, which are not in CI.
 
 | Agent platform | Status |
 |---|---|
 | Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | Tested in CI on CentOS 6.10 |
 | Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI; best effort (see below) |
-| AIX 7.1 / 7.2 with IBM Java 8 | Experimental: connects on real AIX with IBM Java 8 (the first run found a signed-provider failure, fixed, see below); builds not yet confirmed |
-| Solaris with Java 8 | Experimental: installs, passes `--check` and connects over SSH on real Solaris (Oracle Java 8u60); builds not yet confirmed |
-| HP-UX with Java 8 | Experimental: installs, passes `--check` and connects over SSH on real HP-UX (Itanium, HP Java 8, 32-bit); builds not yet confirmed |
+| AIX 7.1 / 7.2 with IBM Java 8 | Tested on real AIX with IBM Java 8 (the first run found a signed-provider failure, fixed, see below); not in CI |
+| Solaris with Java 8 | Tested on real Solaris (Oracle Java 8u60) over SSH; not in CI |
+| HP-UX with Java 8 | Tested on real HP-UX (Itanium, HP Java 8, 32-bit) over SSH; not in CI |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
 | Linux, HotSpot Java 17 (`agent8-java17.jar`) | Tested in CI against the current LTS |
 
@@ -92,7 +92,7 @@ Its *Remoting Version* monitor also takes agents offline whose remoting version 
 
 **The old jar.** On the first `--replace`, the host's original jar is renamed to `agent.jar.before-agent8` (a later run never overwrites it), and agent8 is moved into place under the original name, so a running agent keeps its open file. `sh install.sh --restore /path/to/agent.jar` puts the original back and removes `jvmdg.jar`. Keep the backup until the agent has run builds for a while, then delete it.
 
-`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under a POSIX shell (`/usr/xpg4/bin/sh`, else `ksh`) on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu, and it has run on real Solaris and HP-UX; AIX is untested. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
+`install.sh` sticks to POSIX `sh` commands (no `command -v`, `!`, `tail -n`, `head -n`, `mktemp -d` or GNU-only flags), reruns itself under a POSIX shell (`/usr/xpg4/bin/sh`, else `ksh`) on Solaris 10's Bourne shell, and is checked with `shellcheck -s sh`. CI runs it on CentOS 6 and Ubuntu, and it has run on real AIX, Solaris and HP-UX. Windows hosts can run a current Java and the stock `agent.jar`, so agent8 does not target them.
 
 The agent host needs a `kill` command on the `PATH`, which every real RHEL 6 and AIX system has.
 
@@ -158,8 +158,7 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 ## Known gaps
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker, artifact repository upload steps (Artifactory, Nexus) or command-line git, still need testing. Try those on one host before moving a whole job.
-- AIX with IBM Java 8: the first real run (AIX 7.1, IBM Java 8 SR6) found the signed-provider failure above, now fixed, and agent8 now connects there; a full build on AIX is not confirmed yet. OpenJ9 on Linux covers the JVM but not IBM's own providers or AIX itself.
-- On AIX, Jenkins code on the agent loads JNA (for example to kill a build's processes on abort); whether its AIX native library loads is checked only on the first real AIX run ([#2](https://github.com/keelinfra/agent8/issues/2)). The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
+- On AIX, Jenkins code on the agent loads JNA (for example to kill a build's processes on abort); see [#2](https://github.com/keelinfra/agent8/issues/2). The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
 
 ## License
 
