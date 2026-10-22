@@ -139,6 +139,21 @@ final class Agent8Test {
         eq("methods unchanged", Check.node(original).methods.size(), pinned.methods.size());
     }
 
+    static void testRecordsKeepADeclaredUid() throws Exception {
+        // The controller sends a record's declared serialVersionUID; a second field would not load.
+        ClassWriter w = Check.begin(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
+                "agent8test/Point", "java/lang/Record", SERIALIZABLE);
+        w.visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, "serialVersionUID", "J", null, 7L).visitEnd();
+        w.visitEnd();
+        byte[] pinned = Agent8.pinSerialVersionUID(w.toByteArray());
+        ClassNode c = Check.node(pinned);
+        eq("fields", 1, c.fields.size());
+        eq("declared record UID", 7L, Check.field(c, "serialVersionUID").value);
+        if (ClassLoader.getSystemResource("java/lang/Record.class") != null) { // Java 16+
+            eq("loads", "agent8test.Point", Check.load("agent8test.Point", pinned).getName());
+        }
+    }
+
     static void testTransformPinsClassesNewerThanThisJvm() throws Exception {
         int newer = Agent8.RUNTIME_CLASS_VERSION + 1;
         isTrue("ASM 9.8 reads Java " + (newer - 44) + " classes: run the unit tests on Java 11 to 21", newer <= Opcodes.V25);
