@@ -1,0 +1,54 @@
+name: Unit tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'compat/**'
+      - 'tools/**'
+      - 'test/unit.sh'
+      - 'test/unit/**'
+      - 'test/*.py'
+      - '.github/workflows/unit.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'compat/**'
+      - 'tools/**'
+      - 'test/unit.sh'
+      - 'test/unit/**'
+      - 'test/*.py'
+      - '.github/workflows/unit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests, Java ${{ matrix.java }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 11: the JDK's CollSer gets patched (Java 9 to 15); 17 and 21: what controllers run.
+        java: ['11', '17', '21']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Lint
+        run: shellcheck test/unit.sh
+
+      # The JDKs preinstalled on the runner (JAVA_HOME_<version>_X64).
+      - name: Unit tests
+        env:
+          JAVA_VERSION: ${{ matrix.java }}
+        run: |
+          home=JAVA_HOME_${JAVA_VERSION}_X64
+          export JAVA_HOME=${!home:?no JDK $JAVA_VERSION on this runner}
+          export PATH=$JAVA_HOME/bin:$PATH
+          java -version
+          test/unit.sh
