@@ -23,6 +23,8 @@ public class Fetch {
             HttpURLConnection c = (HttpURLConnection) url.openConnection();
             c.setInstanceFollowRedirects(false);
             c.setRequestProperty("User-Agent", "agent8-install");
+            // Java 8's default Accept header ("..., *; q=.2, */*; q=.2") gets HTTP 406 from GitHub.
+            c.setRequestProperty("Accept", "*/*");
             int code = c.getResponseCode();
             if (code >= 300 && code < 400 && c.getHeaderField("Location") != null) {
                 url = new URL(url, c.getHeaderField("Location"));
