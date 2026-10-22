@@ -229,6 +229,9 @@ else
     fi
     TAG=latest
     if [ -n "$VERSION" ]; then
+        # It comes from the controller's agent.jar (or --version) and goes into a sed
+        # script and a URL: refuse anything but a version string (e.g. 3309.v27b_9314fd1a_4).
+        case $VERSION in *[!A-Za-z0-9._-]*) die "not a remoting version: $VERSION" ;; esac
         # Releases are tagged jenkins-<version>; those from before 2026-10-14, remoting-<version>.
         TAG=$(find_tag "$VERSION") || TAG=
         if [ -n "$TAG" ] && release "$TAG"; then say "using release $TAG"
