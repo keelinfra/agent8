@@ -56,6 +56,9 @@ jobs:
         jenkins: ${{ fromJSON(needs.versions.outputs.jenkins) }}
     env:
       BASIC: ${{ matrix.jenkins.basic }}
+      # Dispatch inputs: used in scripts only through the environment.
+      JENKINS_TAG: ${{ matrix.jenkins.tag }}
+      LATEST: ${{ inputs.latest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -67,7 +70,7 @@ jobs:
       - name: Start controller
         run: |
           if [ -n "$BASIC" ]; then plugins=(--build-arg PLUGINS=); else plugins=(); fi
-          docker build --progress=plain -t controller --build-arg JENKINS_TAG=${{ matrix.jenkins.tag }} "${plugins[@]}" -f test/Dockerfile.controller test
+          docker build --progress=plain -t controller --build-arg "JENKINS_TAG=$JENKINS_TAG" "${plugins[@]}" -f test/Dockerfile.controller test
           docker run -d --name controller --network host controller
           for i in $(seq 1 60); do curl -fs -o /dev/null localhost:8080/login && break; sleep 3; done
           curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
@@ -175,7 +178,7 @@ jobs:
           else
             gh release create "$tag" dist/*.jar dist/*.cdx.json dist/sha256sums.txt --title "$title" --notes "$notes" --latest=false
           fi
-          if [ "${{ matrix.jenkins.tag }}" = "${{ inputs.latest }}" ]; then gh release edit "$tag" --latest; fi
+          if [ "$JENKINS_TAG" = "$LATEST" ]; then gh release edit "$tag" --latest; fi
           # index.txt on the latest release: newest release first for each remoting version.
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
             --jq '.[] | select(.tag_name | startswith("jenkins-")) | (.body | capture("ships remoting (?<v>[^ ;,]+)").v) + " " + .tag_name' \

@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Skip releases younger than a week: a hijacked release is usually
+    # caught and pulled within days.
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:
