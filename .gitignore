@@ -2,3 +2,4 @@
 target/
 dist/
 .jvmdg/
+__pycache__/

@@ -16,6 +16,7 @@ import java.util.zip.ZipOutputStream;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.SerialVersionUIDAdder;
 
@@ -27,7 +28,7 @@ import org.objectweb.asm.commons.SerialVersionUIDAdder;
  * <li>Downgrading adds synthetic members, which changes the default
  * {@code serialVersionUID} of every {@code Serializable} class that does not
  * declare one. This agent pins the UID the controller computes, before the
- * bytecode is downgraded. Records always use UID 0.</li>
+ * bytecode is downgraded. Records use UID 0 unless they declare one.</li>
  * <li>JDK classes that only exist in newer Java but appear in serialized data
  * ({@code java.util.CollSer}) are added to the bootstrap class path.</li>
  * <li>JvmDowngrader stubs that behave differently from the JDK are fixed, see {@link StubFixes}.</li>
@@ -99,11 +100,21 @@ public final class Agent8 implements ClassFileTransformer {
         ClassWriter w = new ClassWriter(0);
         if ("java/lang/Record".equals(r.getSuperName())) {
             r.accept(new ClassVisitor(Opcodes.ASM9, w) {
+                private boolean declared; // the controller sends a declared UID, so keep it
+
+                @Override
+                public FieldVisitor visitField(int access, String name, String desc, String sig, Object value) {
+                    declared |= name.equals("serialVersionUID") && desc.equals("J");
+                    return super.visitField(access, name, desc, sig, value);
+                }
+
                 @Override
                 public void visitEnd() {
-                    visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
-                                    "serialVersionUID", "J", null, 0L)
-                            .visitEnd();
+                    if (!declared) {
+                        super.visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL,
+                                        "serialVersionUID", "J", null, 0L)
+                                .visitEnd();
+                    }
                     super.visitEnd();
                 }
             }, 0);
