@@ -159,8 +159,8 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 
 ## Known gaps
 
-- A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker, artifact repository upload steps (Artifactory, Nexus) or command-line git, still need testing. Try those on one host before moving a whole job.
-- The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
+- A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. CI tests Git checkout (JGit and command-line git) and credentials binding. Other plugins that run their own code on agents, such as Docker or artifact repository upload steps (Artifactory, Nexus), are untested. Try those on one host before moving a whole job.
+- The Maven project type (maven-plugin) does not work: it starts its own JVM for Maven, which agent8 does not reach. Run Maven from a Pipeline or freestyle shell step (`sh 'mvn ...'`) instead; that works like any other command.
 
 ## License
 
