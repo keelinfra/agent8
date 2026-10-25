@@ -160,7 +160,6 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 ## Known gaps
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker, artifact repository upload steps (Artifactory, Nexus) or command-line git, still need testing. Try those on one host before moving a whole job.
-- On AIX, the first SSH connect can be slow (up to a few minutes) or time out; set the node's *Launch timeout* to about 300 seconds ([#23](https://github.com/keelinfra/agent8/issues/23)). After a reconnect the node stays stable.
 - The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
 
 ## License
