@@ -50,6 +50,8 @@ Free to use. Linux is tested in CI on every change and weekly, against the curre
 
 IBM Java and OpenJ9 (J9) are outside Jenkins' own support, so J9 support here is best effort.
 
+Using GitLab CI on AIX 7.2 or 7.3? See [aix-runner](https://github.com/keelinfra/aix-runner) (unofficial GitLab Runner builds).
+
 ## Install
 
 On the build host, with its old Java and the controller's URL:
