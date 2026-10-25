@@ -140,10 +140,18 @@ else
 
     if curl -fsSg "$URL/pluginManager/api/json?tree=plugins[shortName]" | grep -q '"maven-plugin"'; then
         groovy test/setup-maven.groovy
+        # Control: the same build on the controller's built-in node, with stock remoting.
+        if docker cp "$T/maven" "${CONTROLLER_CONTAINER:-controller}:/opt/maven" &&
+            docker cp "$T/repo.git" "${CONTROLLER_CONTAINER:-controller}:/repo.git"; then
+            n=$(build agent8-maven-builtin); r=$(result agent8-maven-builtin "$n")
+            log agent8-maven-builtin "$n" > "$T/maven-builtin.log"
+            echo "control: Maven project type on the built-in node: $r"
+            [[ $r = SUCCESS ]] || grep -E 'ERROR|Exception|Caused by|at hudson.maven' "$T/maven-builtin.log" | head -20
+        fi
         n=$(build agent8-maven); r=$(result agent8-maven "$n"); log agent8-maven "$n" > "$T/maven.log"
         check "Maven project type build succeeds ($r)" test "$r" = SUCCESS
         check "maven build log has 'BUILD SUCCESS'" grep -qF 'BUILD SUCCESS' "$T/maven.log"
-        [[ $r = SUCCESS ]] || cat "$T/maven.log"
+        [[ $r = SUCCESS ]] || grep -vE '^\s+at |^\s+\.\.\. [0-9]+ more' "$T/maven.log" | tail -40
     else
         echo "skip Maven project type: no maven-plugin on the controller"
     fi
