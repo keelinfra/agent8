@@ -11,7 +11,7 @@ curl -fsSO https://jenkins.example.com/jnlpJars/agent.jar
 ## Tests
 
 - `test/serialization.sh`: objects written on Java 21 are read on Java 8.
-- `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11 and 17), starts it with the usual command against a running controller and checks Pipeline builds, a Git checkout (JGit, i.e. plugin code from the controller running on old Java), `withCredentials`, abort, agent restart during a build, the script console, and `--replace`/`--restore`. With `BASIC=1` it runs against a bare controller (core only, freestyle shell build), for older Jenkins lines whose plugins no longer install.
+- `test/it.sh`: installs agent8 with `install.sh` over a stock `agent.jar` in a container with old Java (CentOS 6 with HotSpot 8, Ubuntu with OpenJ9 8, Ubuntu with HotSpot 11 and 17), starts it with the usual command against a running controller and checks Pipeline builds, a Git checkout with JGit (plugin code from the controller running on old Java) and with command-line git (on images that can install git), `withCredentials`, abort, agent restart during a build, the script console, and `--replace`/`--restore`. With `BASIC=1` it runs against a bare controller (core only, freestyle shell build), for older Jenkins lines whose plugins no longer install.
 
 - `test/ssh.sh`: an SSH Build Agents node with *Java Path* set to the file `install.sh` writes, on a HotSpot 8 and an OpenJ9 8 host whose first security provider is a signed jar (as on Solaris and IBM Java); checks `--check`, that the node comes online, the script console, the signed provider, and a freestyle build.
 
