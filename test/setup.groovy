@@ -17,8 +17,8 @@ def j = Jenkins.get()
 ComputerSet.monitors.findAll { it.class.name == 'hudson.plugin.versioncolumn.JVMVersionMonitor' }.each {
     it.disconnect = false
 }
-// Git checkouts on the agent use JGit (plugin code from the controller, run on old Java):
-// the agent images have no git binary.
+// Git checkouts on the agent use JGit (plugin code from the controller, run on old Java), and
+// command-line git ('Default') where test/it.sh could install a git binary on the agent.
 j.getDescriptorByType(GitTool.DescriptorImpl).setInstallations([new GitTool('Default', 'git', []), new JGitTool()] as GitTool[])
 def store = SystemCredentialsProvider.instance
 if (!store.credentials.any { it.id == 'agent8-cred' }) {
@@ -57,6 +57,13 @@ node('agent8') {
   withCredentials([usernamePassword(credentialsId: 'agent8-cred', usernameVariable: 'U', passwordVariable: 'P')]) {
     sh 'echo "user=$U"; test "$P" = s3cret-pw && echo password-ok'
   }
+}
+''')
+job('agent8-cli-git', '''
+node('agent8') {
+  checkout([$class: 'GitSCM', branches: [[name: '*/main']], gitTool: 'Default',
+            userRemoteConfigs: [[url: 'file:///repo.git']]])
+  sh 'git --version; echo "cli-checked-out=$(cat README)"'
 }
 ''')
 job('agent8-abort', "node('agent8') { sh 'echo started; sleep 601 & sleep 600' }")

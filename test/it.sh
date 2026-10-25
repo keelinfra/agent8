@@ -120,6 +120,18 @@ else
     done
     [[ $r = SUCCESS ]] || cat "$T/plugins.log"
 
+    # Command-line git (the git plugin's default tool): only on images with a package manager
+    # that still works; CentOS 6's repositories are gone, so it has no git binary.
+    if docker exec agent8-it sh -c 'command -v apt-get >/dev/null && apt-get update -qq >/dev/null &&
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git >/dev/null'; then
+        n=$(build agent8-cli-git); r=$(result agent8-cli-git "$n"); log agent8-cli-git "$n" > "$T/cli-git.log"
+        check "git checkout (command-line git) build succeeds ($r)" test "$r" = SUCCESS
+        check "cli git build log has 'cli-checked-out=agent8-repo'" grep -qF 'cli-checked-out=agent8-repo' "$T/cli-git.log"
+        [[ $r = SUCCESS ]] || cat "$T/cli-git.log"
+    else
+        echo "skip command-line git: no git package on $AGENT_IMAGE"
+    fi
+
     n=$(build agent8-abort)
     for _ in $(seq 1 30); do log agent8-abort "$n" 2>/dev/null | grep -q '^started' && break; sleep 2; done
     sleep 2
