@@ -138,12 +138,14 @@ else
         echo "skip command-line git: no git package on $AGENT_IMAGE"
     fi
 
-    if curl -fsS "$URL/pluginManager/api/json?tree=plugins[shortName]" | grep -q '"maven-plugin"'; then
+    if curl -fsSg "$URL/pluginManager/api/json?tree=plugins[shortName]" | grep -q '"maven-plugin"'; then
         groovy test/setup-maven.groovy
         n=$(build agent8-maven); r=$(result agent8-maven "$n"); log agent8-maven "$n" > "$T/maven.log"
         check "Maven project type build succeeds ($r)" test "$r" = SUCCESS
         check "maven build log has 'BUILD SUCCESS'" grep -qF 'BUILD SUCCESS' "$T/maven.log"
         [[ $r = SUCCESS ]] || cat "$T/maven.log"
+    else
+        echo "skip Maven project type: no maven-plugin on the controller"
     fi
 
     n=$(build agent8-abort)
