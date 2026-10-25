@@ -1,9 +1,9 @@
-# Controller for the integration test: no security, Pipeline, Git and credentials plugins.
+# Controller for the integration test: no security, Pipeline, Git, credentials and Maven project plugins.
 # PLUGINS="" gives a bare controller (core only), for Jenkins lines whose plugins the
 # plugin installer can no longer resolve; test/it.sh then runs with BASIC=1.
 ARG JENKINS_TAG=lts-jdk21
 FROM jenkins/jenkins:${JENKINS_TAG}
-ARG PLUGINS="workflow-job workflow-cps workflow-durable-task-step workflow-basic-steps pipeline-stage-step junit versioncolumn git credentials-binding"
+ARG PLUGINS="workflow-job workflow-cps workflow-durable-task-step workflow-basic-steps pipeline-stage-step junit versioncolumn git credentials-binding maven-plugin"
 # Local file:// repositories are refused by the git plugin unless allowed.
 ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
 # Inbound agent port: any free one, since the runner may already use 50000 (the agent finds it over HTTP).

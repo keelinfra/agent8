@@ -69,11 +69,17 @@ docker rm agent8-jdk >/dev/null
 docker rm -f agent8-it >/dev/null 2>&1 || true
 # A Git repository for the checkout test, at file:///repo.git on the agent.
 git init -q -b main "$T/src" && echo agent8-repo > "$T/src/README" &&
-    git -C "$T/src" -c user.name=t -c user.email=t@t add README &&
+    printf '%s\n' '<project><modelVersion>4.0.0</modelVersion><groupId>t</groupId><artifactId>t</artifactId>' \
+        '<version>1</version><packaging>pom</packaging></project>' > "$T/src/pom.xml" &&
+    git -C "$T/src" -c user.name=t -c user.email=t@t add README pom.xml &&
     git -C "$T/src" -c user.name=t -c user.email=t@t commit -qm init &&
     git clone -q --bare "$T/src" "$T/repo.git"
+# Maven for the Maven project type test (Maven 3.9 runs on Java 8).
+MAVEN_VERSION=3.9.9
+curl -fsS "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/$MAVEN_VERSION/apache-maven-$MAVEN_VERSION-bin.tar.gz" |
+    tar -xz -C "$T" && mv "$T/apache-maven-$MAVEN_VERSION" "$T/maven"
 docker run -d --name agent8-it --network host -v "$PWD/dist:/dist:ro" -v "$T/jdk8:/opt/jdk8:ro" \
-    -v "$T/repo.git:/repo.git:ro" \
+    -v "$T/repo.git:/repo.git:ro" -v "$T/maven:/opt/maven:ro" \
     -v "$PWD/test/kill:/usr/local/bin/kill:ro" -v "$PWD/install.sh:/install.sh:ro" \
     "$AGENT_IMAGE" sleep infinity >/dev/null
 [[ -n ${KEEP:-} ]] || trap 'docker rm -f agent8-it >/dev/null 2>&1 || true' EXIT
@@ -119,6 +125,26 @@ else
         check "plugins build log has '$want'" grep -qF "$want" "$T/plugins.log"
     done
     [[ $r = SUCCESS ]] || cat "$T/plugins.log"
+
+    # Command-line git (the git plugin's default tool): only on images with a package manager
+    # that still works; CentOS 6's repositories are gone, so it has no git binary.
+    if docker exec agent8-it sh -c 'command -v apt-get >/dev/null && apt-get update -qq >/dev/null &&
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git >/dev/null'; then
+        n=$(build agent8-cli-git); r=$(result agent8-cli-git "$n"); log agent8-cli-git "$n" > "$T/cli-git.log"
+        check "git checkout (command-line git) build succeeds ($r)" test "$r" = SUCCESS
+        check "cli git build log has 'cli-checked-out=agent8-repo'" grep -qF 'cli-checked-out=agent8-repo' "$T/cli-git.log"
+        [[ $r = SUCCESS ]] || cat "$T/cli-git.log"
+    else
+        echo "skip command-line git: no git package on $AGENT_IMAGE"
+    fi
+
+    if curl -fsS "$URL/pluginManager/api/json?tree=plugins[shortName]" | grep -q '"maven-plugin"'; then
+        groovy test/setup-maven.groovy
+        n=$(build agent8-maven); r=$(result agent8-maven "$n"); log agent8-maven "$n" > "$T/maven.log"
+        check "Maven project type build succeeds ($r)" test "$r" = SUCCESS
+        check "maven build log has 'BUILD SUCCESS'" grep -qF 'BUILD SUCCESS' "$T/maven.log"
+        [[ $r = SUCCESS ]] || cat "$T/maven.log"
+    fi
 
     n=$(build agent8-abort)
     for _ in $(seq 1 30); do log agent8-abort "$n" 2>/dev/null | grep -q '^started' && break; sleep 2; done
