@@ -1,9 +1,13 @@
 name: CI
 
+# Docs-only changes (README, docs/, other Markdown) do not run the build; the weekly run
+# and any code change still do.
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   schedule:
     # Weekly: catch new Jenkins and remoting releases early.
     - cron: '17 3 * * 1'
