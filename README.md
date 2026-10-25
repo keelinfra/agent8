@@ -35,7 +35,7 @@ Available and free to use (MIT). Linux is tested in CI on every change, and week
 |---|---|
 | Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | Tested in CI on CentOS 6.10 |
 | Linux, OpenJ9 Java 8 (IBM Semeru) — the JVM family of IBM Java 8 on AIX | Tested in CI; best effort (see below) |
-| AIX 7.1 / 7.2 with IBM Java 8 | Tested; not in CI |
+| AIX 7.1 / 7.2 / 7.3 with IBM Java 8 | Tested, including aborting builds (child processes are killed); not in CI |
 | Solaris with Java 8 | Tested (Oracle Java 8, SSH agent); not in CI |
 | HP-UX with Java 8 | Tested (Itanium, HP Java 8, SSH agent); not in CI |
 | Linux, HotSpot Java 11 (`agent8-java11.jar`) | Tested in CI against the current LTS |
@@ -160,7 +160,7 @@ Run the **Release** workflow (Actions → Release → Run workflow). By default 
 ## Known gaps
 
 - A newer JDK API that JvmDowngrader cannot stub fails only when that code runs. Plugins that run their own code on agents beyond Git checkout (JGit) and credentials binding, which CI tests, such as Maven, Docker, artifact repository upload steps (Artifactory, Nexus) or command-line git, still need testing. Try those on one host before moving a whole job.
-- On AIX, Jenkins code on the agent loads JNA (for example to kill a build's processes on abort); see [#2](https://github.com/keelinfra/agent8/issues/2). The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
+- The Maven project type (maven-plugin), which starts its own remoting JVM, is untested.
 
 ## License
 
