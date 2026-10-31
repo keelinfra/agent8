@@ -63,8 +63,6 @@ sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 
 `install.sh` picks the agent8 jar that matches the controller and the host's Java, checks its sha256, checks it runs on the host (`--check`), and swaps it in for your `agent.jar` (the old one is kept). Restart the agent with its usual command. Nothing needs to be installed on the controller.
 
-**How long it takes.** On 2026-10-31 we timed it on a Linux x86_64 host with Temurin Java 8, whose stock `agent.jar` failed with `UnsupportedClassVersionError`, against Jenkins 2.580.2 on the same machine. From downloading `install.sh` to the agent showing as connected took 42 to 43 seconds in three runs: 23 to 24 s for `install.sh` and 18 to 20 s for the agent to start and connect. A freestyle build then ran on it. We have not timed it on AIX, Solaris or HP-UX.
-
 **SSH agents:** install with `--dir /opt/agent8` instead of `--replace`, then set the node's *Java Path* to `/opt/agent8/java`.
 
 More in [docs/install.md](docs/install.md): hosts without internet or with an old CA bundle, Ansible, the versioncolumn plugin, controller upgrades, and troubleshooting. Building and testing: [docs/development.md](docs/development.md).
