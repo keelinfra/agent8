@@ -61,7 +61,7 @@ curl -fsSLO https://raw.githubusercontent.com/keelinfra/agent8/main/install.sh
 sh install.sh --url https://jenkins.example.com/ --replace /path/to/agent.jar
 ```
 
-`install.sh` picks the agent8 jar that matches the controller and the host's Java, checks its sha256, checks it runs on the host (`--check`), and swaps it in for your `agent.jar` (the old one is kept). Restart the agent with its usual command.
+`install.sh` picks the agent8 jar that matches the controller and the host's Java, checks its sha256, checks it runs on the host (`--check`), and swaps it in for your `agent.jar` (the old one is kept). Restart the agent with its usual command. Nothing needs to be installed on the controller.
 
 **SSH agents:** install with `--dir /opt/agent8` instead of `--replace`, then set the node's *Java Path* to `/opt/agent8/java`.
 
