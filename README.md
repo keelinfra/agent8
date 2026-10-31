@@ -13,7 +13,7 @@
 [![Host Java](https://img.shields.io/badge/host%20Java-8%20%7C%2011%20%7C%2017-blue)](#install)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
-Run a **native Jenkins agent on Java 8** (or 11, 17), connected to a current Jenkins controller that runs on Java 21 or newer.
+Run a **native Jenkins agent on Java 8** (or 11, 17), connected to a Jenkins controller that runs on a newer Java: 11, 17, 21 or 25.
 
 > Agent8 is an independent project. It is not part of, or endorsed or supported by, the Jenkins project. Please report problems [here](https://github.com/keelinfra/agent8/issues), not to the Jenkins issue tracker.
 
@@ -49,6 +49,17 @@ Free to use. Linux is tested in CI on every change and weekly, against the curre
 | Linux, HotSpot Java 17 (`agent8-java17.jar`) | Tested in CI against the current LTS |
 
 IBM Java and OpenJ9 (J9) are outside Jenkins' own support, so J9 support here is best effort.
+
+**Controllers.** What agent8 has to match is the controller's Jenkins version, not the Java it runs on. CI runs the agent tests against controllers on:
+
+| Controller Java | Jenkins version in CI |
+|---|---|
+| Java 25 | current LTS |
+| Java 21 | current LTS and weekly |
+| Java 17 | 2.541.3, the last LTS on Java 17 |
+| Java 11 | 2.462.3, the last LTS on Java 11 (bare controller: freestyle build, no plugins) |
+
+After a controller upgrade, rerun `install.sh` so the agent matches the new Jenkins version. Releases are built for the current LTS and weekly, and a weekly check opens an issue when a new Jenkins version has none yet. For an older Jenkins version, [ask for a build](https://github.com/keelinfra/agent8/issues).
 
 Using GitLab CI on AIX 7.2 or 7.3? See [aix-runner](https://github.com/keelinfra/aix-runner) (unofficial GitLab Runner builds).
 
