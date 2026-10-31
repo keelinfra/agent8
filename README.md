@@ -11,6 +11,7 @@
 
 [![CI](https://github.com/keelinfra/agent8/actions/workflows/ci.yml/badge.svg)](https://github.com/keelinfra/agent8/actions/workflows/ci.yml)
 [![Host Java](https://img.shields.io/badge/host%20Java-8%20%7C%2011%20%7C%2017-blue)](#install)
+[![Controller Java](https://img.shields.io/badge/controller%20Java-11%20%7C%2017%20%7C%2021%20%7C%2025-blue)](#status)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](#license)
 
 Run a **native Jenkins agent on Java 8** (or 11, 17), connected to a Jenkins controller that runs on a newer Java: 11, 17, 21 or 25.
