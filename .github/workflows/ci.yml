@@ -105,7 +105,8 @@ jobs:
         run: docker logs controller 2>&1 | tail -200
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        if: matrix.agent.name == 'HotSpot 8 on CentOS 6'
+        # Once per Jenkins version: lts-jdk25 is the same version as lts-jdk21.
+        if: matrix.agent.name == 'HotSpot 8 on CentOS 6' && endsWith(matrix.jenkins, '-jdk21')
         with:
           name: agent8-jenkins-${{ env.JENKINS_VERSION }}
           path: dist/
