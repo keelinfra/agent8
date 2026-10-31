@@ -52,6 +52,15 @@ jobs:
             os: eclipse-temurin:17-jdk
             java: '17'
             jar: agent8-java17.jar
+        # Controllers on other Java versions: Java 25 (current LTS), and Java 17 (2.541.3,
+        # the last LTS that runs on 17). The agent side is the same; only the old-Java agents.
+        include:
+          - jenkins: lts-jdk25
+            agent: {name: HotSpot 8 on CentOS 6, jdk: eclipse-temurin:8-jdk, os: centos:6}
+          - jenkins: lts-jdk25
+            agent: {name: OpenJ9 8, jdk: ibm-semeru-runtimes:open-8-jdk, os: ibm-semeru-runtimes:open-8-jdk}
+          - jenkins: 2.541.3-lts-jdk17
+            agent: {name: HotSpot 8 on CentOS 6, jdk: eclipse-temurin:8-jdk, os: centos:6}
         exclude:
           - jenkins: latest-jdk21
             agent: {name: HotSpot 11, jdk: eclipse-temurin:11-jdk, os: eclipse-temurin:11-jdk, java: '11', jar: agent8-java11.jar}
