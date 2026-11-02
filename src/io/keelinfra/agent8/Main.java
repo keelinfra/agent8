@@ -35,6 +35,7 @@ public final class Main {
             return;
         }
         if (Agent8.active && jvmdgActive()) {
+            Agent8.restoreStdout();
             if (args.length == 1 && args[0].equals("--check")) {
                 System.exit(check());
             }
