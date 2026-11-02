@@ -7,7 +7,9 @@
 # The controller needs the ssh-slaves plugin (PLUGINS=ssh-slaves in Dockerfile.controller).
 #
 #   JENKINS_URL   controller URL (default http://localhost:8080)
-#   JDK8_IMAGE    Debian/Ubuntu-based Java 8 JDK image for the agent (default eclipse-temurin:8-jdk)
+#   JDK8_IMAGE    Debian/Ubuntu-based JDK image for the agent (default eclipse-temurin:8-jdk). With a
+#                 Java 17 image (agent8-java17.jar), the signed provider checks are skipped: they
+#                 use the extension directory, which Java 9+ no longer has.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 URL=${JENKINS_URL:-http://localhost:8080}
@@ -33,27 +35,31 @@ docker run -d --name agent8-ssh --network host -v "$PWD/dist:/dist:ro" -v "$PWD/
     -v "$PWD/test/signed-provider:/signed-provider:ro" "$JDK8_IMAGE" sleep infinity >/dev/null
 [[ -n ${KEEP:-} ]] || trap 'docker rm -f agent8-ssh >/dev/null 2>&1 || true' EXIT
 JH=$(on_agent 'echo "$JAVA_HOME"') # /opt/java/openjdk in the eclipse-temurin images
+JV=$(on_agent "$JH/bin/java -XshowSettings:properties -version 2>&1" | sed -n 's/^ *java.specification.version = //p') # 1.8, 17
 
 # sshd on port 2222, user jenkins
 on_agent 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y openssh-server >/dev/null'
 on_agent 'useradd -m -s /bin/sh jenkins && echo jenkins:agent8-pw | chpasswd && mkdir -p /run/sshd &&
     /usr/sbin/sshd -p 2222 -o PasswordAuthentication=yes'
 
-# The signed provider jar
-on_agent "set -e; mkdir -p /tmp/sp /opt/signed
-    $JH/bin/javac -d /tmp/sp /signed-provider/keeltest/*.java
-    $JH/bin/jar cf /opt/signed/keeltest.jar -C /tmp/sp keeltest
-    $JH/bin/keytool -genkeypair -keystore /tmp/ks.jks -storepass secret -keypass secret -alias t \
-        -dname CN=agent8-test -keyalg RSA -keysize 2048 2>/dev/null
-    $JH/bin/jarsigner -keystore /tmp/ks.jks -storepass secret /opt/signed/keeltest.jar t >/dev/null
-    $JH/bin/jarsigner -verify /opt/signed/keeltest.jar | tail -1"
-EXT=$JH/jre/lib/ext
-JVM_OPTIONS="-Djava.ext.dirs=$EXT:/opt/signed -Djava.security.properties=/signed-provider/java.security"
+JVM_OPTIONS=
+if [[ $JV = 1.8 ]]; then
+    # The signed provider jar (Java 8: loaded from the extension directory)
+    on_agent "set -e; mkdir -p /tmp/sp /opt/signed
+        $JH/bin/javac -d /tmp/sp /signed-provider/keeltest/*.java
+        $JH/bin/jar cf /opt/signed/keeltest.jar -C /tmp/sp keeltest
+        $JH/bin/keytool -genkeypair -keystore /tmp/ks.jks -storepass secret -keypass secret -alias t \
+            -dname CN=agent8-test -keyalg RSA -keysize 2048 2>/dev/null
+        $JH/bin/jarsigner -keystore /tmp/ks.jks -storepass secret /opt/signed/keeltest.jar t >/dev/null
+        $JH/bin/jarsigner -verify /opt/signed/keeltest.jar | tail -1"
+    EXT=$JH/jre/lib/ext
+    JVM_OPTIONS="-Djava.ext.dirs=$EXT:/opt/signed -Djava.security.properties=/signed-provider/java.security"
+fi
 
 on_agent "sh /install.sh --from /dist --java $JH/bin/java --dir /opt/agent8"
 check "install: Java Path wrapper written" on_agent 'test -x /opt/agent8/java'
-check "wrapper passes other commands through" on_agent '/opt/agent8/java -version 2>&1 | grep -q "version \"1.8"'
-check "--check: signed provider, key store and TLS work with both Java agents" on_agent \
+check "wrapper passes other commands through" on_agent "/opt/agent8/java -version 2>&1 | grep -q 'version \"$JV'"
+check "--check: security providers, key store and TLS work with both Java agents" on_agent \
     "/opt/agent8/java $JVM_OPTIONS -jar /opt/agent8/agent8.jar --check | grep '^agent8 check: ok on'"
 
 sed "s|JVM_OPTIONS|$JVM_OPTIONS|" test/setup-ssh.groovy > "$T/setup.groovy"
@@ -66,11 +72,13 @@ check "launcher copied the stock remoting.jar" on_agent \
 
 printf 'println System.getProperty("java.version")\n' > "$T/v.groovy"
 out=$(post --data-urlencode "script@$T/v.groovy" "$URL/computer/agent8-ssh/scriptText" || true)
-check "agent runs on Java 8 ($out)" test "${out:0:3}" = 1.8
-# getName(): a Provider is a Map, so Groovy reads .name as a map key.
-printf 'println java.security.MessageDigest.getInstance("KEELTEST").getProvider().getName()\n' > "$T/p.groovy"
-out=$(post --data-urlencode "script@$T/p.groovy" "$URL/computer/agent8-ssh/scriptText" 2>&1 || true)
-check "signed security provider loads ($out)" test "$out" = KeelTest
+check "agent runs on Java $JV ($out)" test "${out:0:${#JV}}" = "$JV"
+if [[ $JV = 1.8 ]]; then
+    # getName(): a Provider is a Map, so Groovy reads .name as a map key.
+    printf 'println java.security.MessageDigest.getInstance("KEELTEST").getProvider().getName()\n' > "$T/p.groovy"
+    out=$(post --data-urlencode "script@$T/p.groovy" "$URL/computer/agent8-ssh/scriptText" 2>&1 || true)
+    check "signed security provider loads ($out)" test "$out" = KeelTest
+fi
 
 n=$(curl -fsS "$URL/job/agent8-ssh-build/api/json?tree=nextBuildNumber" | sed 's/.*:\([0-9]*\)}/\1/')
 post "$URL/job/agent8-ssh-build/build" -o /dev/null

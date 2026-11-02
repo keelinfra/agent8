@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
@@ -42,7 +43,26 @@ public final class Agent8 implements ClassFileTransformer {
     /** Whether this Java agent was started, see {@link Main}. */
     static volatile boolean active;
 
+    /**
+     * Standard output as the JVM started it. JvmDowngrader's loggers keep the System.out they
+     * see when its agent starts, after this one. With the SSH launcher, standard output is the
+     * remoting channel, so a log line from them would corrupt it and the agent hangs (#32).
+     * premain points System.out at standard error while JvmDowngrader starts;
+     * {@link #restoreStdout()} puts it back before remoting starts.
+     */
+    static PrintStream stdout;
+
+    static void restoreStdout() {
+        if (stdout != null) {
+            System.out.flush();
+            System.setOut(stdout);
+            stdout = null;
+        }
+    }
+
     public static void premain(String args, Instrumentation inst) throws IOException {
+        stdout = System.out;
+        System.setOut(System.err);
         inst.appendToBootstrapClassLoaderSearch(new JarFile(compatJar()));
         inst.addTransformer(new Agent8());
         if (CollSerNulls.needed()) {

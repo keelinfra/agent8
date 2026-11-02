@@ -132,7 +132,8 @@ jobs:
             sh /install.sh --url http://localhost:8080/ --java /opt/jdk8/bin/java --dir /tmp/agent8-java --repo https://github.com/${{ github.repository }}'
 
   # The SSH Build Agents launcher, with Java Path set to the wrapper install.sh writes, on a
-  # Java 8 host whose first security provider is a signed jar (as on Solaris).
+  # Java 8 host whose first security provider is a signed jar (as on Solaris), and on Java 17.
+  # With this launcher, the agent's standard output is the remoting channel (#32).
   ssh:
     name: SSH Build Agents launcher, signed security provider, ${{ matrix.jdk }}
     runs-on: ubuntu-latest
@@ -141,6 +142,10 @@ jobs:
       matrix:
         # OpenJ9: the JVM family of IBM Java 8 on AIX, whose IBMJCE provider is signed.
         jdk: [eclipse-temurin:8-jdk, ibm-semeru-runtimes:open-8-jdk]
+        target: ['8']
+        include:
+          - jdk: eclipse-temurin:17-jdk
+            target: '17'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -158,7 +163,7 @@ jobs:
           curl -fsS -o agent.jar localhost:8080/jnlpJars/agent.jar
 
       - name: Build agent8 from the controller's agent.jar
-        run: ./build.sh agent.jar 8
+        run: ./build.sh agent.jar ${{ matrix.target }}
 
       - name: SSH launcher test
         run: test/ssh.sh
