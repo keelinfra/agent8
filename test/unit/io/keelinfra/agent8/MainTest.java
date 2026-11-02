@@ -72,6 +72,13 @@ final class MainTest {
         }
     }
 
+    static void testSkipsPlatformModuleStubsOnJava9Plus() {
+        isTrue("Java 17: platform module stubs skipped", Main.PLATFORM_STUBS.equals(Main.skipStubs("17", null)));
+        isTrue("Java 11: platform module stubs skipped", Main.PLATFORM_STUBS.equals(Main.skipStubs("11", null)));
+        isTrue("Java 8: nothing skipped", Main.skipStubs("1.8", null) == null);
+        isTrue("user value kept", Main.skipStubs("17", "a/B") == null);
+    }
+
     static void testFindsJvmdg() throws Exception {
         isTrue("run with AGENT8_JVMDG unset", System.getenv("AGENT8_JVMDG") == null);
         File dir = Check.tempDir("lib");

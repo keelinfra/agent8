@@ -48,6 +48,28 @@ public final class Main {
         System.exit(relaunch(args));
     }
 
+    static final String SKIP_STUB = "jvmdg.debug.skipStub";
+
+    /**
+     * JvmDowngrader's stubs for methods added to the java.net.http and jdk.httpserver modules in
+     * Java 16, 17, 21 and 25. JvmDowngrader loads its stubs with the bootstrap class loader,
+     * which on Java 9+ cannot see those modules, so these stubs never load there: JvmDowngrader
+     * logs a NoClassDefFoundError for each and goes on without them (#32). Skipping them changes
+     * nothing but that log.
+     */
+    static final String PLATFORM_STUBS = "xyz/wagyourtail/jvmdg/j16/stub/java_net_http/J_N_H_HttpRequest"
+            + "|xyz/wagyourtail/jvmdg/j17/stub/jdk_httpserver/C_S_N_H_Filter"
+            + "|xyz/wagyourtail/jvmdg/j21/stub/java_net_http/J_N_H_HttpClient"
+            + "|xyz/wagyourtail/jvmdg/j25/stub/java_net_http/J_N_H_HttpResponse";
+
+    /** @return the jvmdg.debug.skipStub value for the child JVM, or null to pass none */
+    static String skipStubs(String javaSpec, String userValue) {
+        if (userValue != null || javaSpec == null || javaSpec.startsWith("1.")) {
+            return null; // set by the user (already among the JVM options), or Java 8
+        }
+        return PLATFORM_STUBS;
+    }
+
     private static boolean jvmdgActive() {
         for (String a : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
             if (a.startsWith("-javaagent:") && a.contains("jvmdg")) {
@@ -69,6 +91,10 @@ public final class Main {
             }
         }
         cmd.add("-D" + CHILD + "=true");
+        String skip = skipStubs(System.getProperty("java.specification.version"), System.getProperty(SKIP_STUB));
+        if (skip != null) {
+            cmd.add("-D" + SKIP_STUB + "=" + skip);
+        }
         cmd.add("-javaagent:" + self.getPath());
         cmd.add("-javaagent:" + jvmdg.getPath());
         cmd.add("-cp");

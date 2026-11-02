@@ -261,8 +261,10 @@ final class Agent8Test {
         try {
             err = Check.stderr(() -> Agent8.premain(null, inst));
             isTrue("active", Agent8.active);
+            isTrue("System.out points at standard error while JvmDowngrader starts", System.out != Agent8.stdout);
         } finally {
             Agent8.active = false;
+            Agent8.restoreStdout(); // premain points System.out at standard error until Main starts remoting
         }
         if (CollSerNulls.needed()) { // this Instrumentation cannot retransform
             contains("Java 9 to 15", err, "[agent8] java.util.CollSer not patched");
