@@ -10,7 +10,7 @@ import java.util.Comparator;
 public final class UnitTests {
 
     static final Class<?>[] SUITES = {
-        Agent8Test.class, CollSerNullsTest.class, SignedJarsTest.class, StubFixesTest.class, MainTest.class,
+        Agent8Test.class, CollSerNullsTest.class, SignedJarsTest.class, StubFixesTest.class, XmlFactoriesTest.class, MainTest.class,
     };
 
     public static void main(String[] args) {

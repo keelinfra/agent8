@@ -34,6 +34,7 @@ import org.objectweb.asm.commons.SerialVersionUIDAdder;
  * ({@code java.util.CollSer}) are added to the bootstrap class path.</li>
  * <li>JvmDowngrader stubs that behave differently from the JDK are fixed, see {@link StubFixes}.</li>
  * <li>JvmDowngrader keeps the signers of signed jars, see {@link SignedJars}.</li>
+ * <li>StAX factory calls this JVM rejects are replaced, see {@link XmlFactories}.</li>
  * </ol>
  */
 public final class Agent8 implements ClassFileTransformer {
@@ -92,12 +93,24 @@ public final class Agent8 implements ClassFileTransformer {
         if (bytes == null || bytes.length < 8 || majorVersion(bytes) <= RUNTIME_CLASS_VERSION) {
             return null; // JvmDowngrader leaves it alone
         }
+        byte[] out;
         try {
-            return pinSerialVersionUID(bytes);
+            out = pinSerialVersionUID(bytes);
         } catch (RuntimeException | LinkageError e) {
             System.err.println("[agent8] cannot pin serialVersionUID of " + name + ": " + e);
-            return null;
+            out = null;
         }
+        if (XmlFactories.applies(bytes)) {
+            try {
+                byte[] xml = XmlFactories.patch(out != null ? out : bytes, RUNTIME_CLASS_VERSION < 53);
+                if (xml != null) {
+                    out = xml;
+                }
+            } catch (RuntimeException | LinkageError e) {
+                System.err.println("[agent8] cannot fix XMLInputFactory calls in " + name + ": " + e);
+            }
+        }
+        return out;
     }
 
     /** Class file version of this JVM: 52 on Java 8, 55 on Java 11. */
