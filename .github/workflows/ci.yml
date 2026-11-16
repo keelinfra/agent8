@@ -180,8 +180,11 @@ jobs:
   # (current LTS): Jenkins refuses agents below a minimum remoting version, and 2.586
   # already refuses the jenkins-2.462.3 build (remoting 3248; "Agent version
   # 3256.3258.v858f3c9a_f69d or newer is required").
+  # It tests the published release, not the commit, so pushes and pull requests skip it: a
+  # fix shows up here only after the next release.
   version-skew:
     name: agent8 ${{ matrix.release }} against the weekly controller, no versioncolumn
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
