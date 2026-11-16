@@ -20,6 +20,14 @@ Run a **native Jenkins agent on Java 8** (or 11, 17), connected to a Jenkins con
 
 **Why.** Jenkins requires Java 21+ on every agent. Build hosts that cannot run Java 21, such as AIX 7.1, older HP-UX and Solaris, are left behind. Agent8 builds an `agent.jar` that runs on Java 8, so these hosts stay ordinary agents: labels, executors, `sh`, file steps, `junit`, `stash`, aborts and the script console work as on any other node.
 
+**The error.** After a controller upgrade, an agent on Java 8 fails to start with:
+
+```
+java.lang.UnsupportedClassVersionError: hudson/remoting/Launcher has been compiled by a more recent version of the Java Runtime (class file version 65.0), this version of the Java Runtime only recognizes class file versions up to 52.0
+```
+
+Class file version 65.0 is Java 21 and 52.0 is Java 8; on Java 11 or 17 the message ends in 55.0 or 61.0. If the host can install a newer Java, do that. If it can't, install Agent8 on it.
+
 On RHEL/CentOS 6, try a newer JDK first: Amazon Corretto 21 and Azul Zulu 21 run on CentOS 6.10, and with them the stock `agent.jar` works without agent8. Agent8 is for hosts with no Java 21 build at all, and for hosts whose installed JDK must not change.
 
 <picture>
