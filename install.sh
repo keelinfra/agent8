@@ -51,6 +51,16 @@ done
 
 die() { echo "agent8: $*" >&2; exit 1; }
 say() { echo "agent8: $*"; }
+# The closing "what next" block: a label column and the thing to copy under it,
+# indented and without the agent8: prefix, so it stands apart from the progress
+# lines above. Bold labels only on a terminal that is not "dumb"; bold is the
+# one attribute every terminal since the VT100 draws, and logs get plain text.
+B='' R=''
+if [ -t 1 ]; then case ${TERM:-dumb} in dumb) ;; *) B=$(printf '\033[1m') R=$(printf '\033[0m') ;; esac; fi
+next() { # label, text, [text to copy]
+    printf '  %s%-15s%s %s\n' "$B" "$1" "$R" "$2"
+    if [ -n "$3" ]; then printf '  %-15s %s\n' '' "$3"; fi
+}
 # Portable to Bourne-derived shells on AIX, Solaris and HP-UX: no `command -v`, no `!`,
 # no head/tail options, no GNU-only flags. CI runs shellcheck -s sh on this file.
 have() { type "$1" >/dev/null 2>&1; }
@@ -290,7 +300,7 @@ exec '$JAVA' \${1+"\$@"}
 EOF
     chmod 755 "$DIR/java.agent8-new"
     mv "$DIR/java.agent8-new" "$DIR/java"
-    say "installed $DIR/agent8.jar, $DIR/jvmdg.jar and $DIR/java (Java Path for SSH agents)"
+    say "installed $DIR/agent8.jar, $DIR/jvmdg.jar and $DIR/java"
 fi
 
 if [ -n "$REPLACE" ]; then
@@ -313,8 +323,11 @@ if [ -n "$REPLACE" ]; then
     mv "$target_dir/jvmdg.jar.agent8-new" "$target_dir/jvmdg.jar"
     say "replaced $REPLACE; restart the agent with its usual command"
 else
-    say "inbound agent: start it as usual, with this jar:"
-    say "  $JAVA -jar $DIR/agent8.jar -url <controller> -secret <secret> -name <node> -workDir <dir>"
-    say "SSH agent (SSH Build Agents launcher): set the node's Java Path to $DIR/java"
+    echo
+    next "Inbound agent" "start it as usual, with this jar:" \
+        "$JAVA -jar $DIR/agent8.jar -url <controller> -secret <secret> -name <node> -workDir <dir>"
+    echo
+    next "SSH agent" "set the node's Java Path (SSH Build Agents launcher) to:" "$DIR/java"
 fi
-say "Rolling this out to many hosts or to AIX/Solaris/HP-UX? Help and support: https://keelinfra.io/jenkins/pricing/"
+echo
+next "Not working?" "https://github.com/keelinfra/agent8/issues"
