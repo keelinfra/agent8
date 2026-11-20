@@ -7,10 +7,10 @@
 
 <p align="center">
   <a href="https://github.com/keelinfra/agent8/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/keelinfra/agent8/ci.yml?branch=main&style=flat-square&label=CI&labelColor=0b2239"></a>
-  <a href="https://github.com/keelinfra/agent8/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/keelinfra/agent8?style=flat-square&label=release&labelColor=0b2239&color=e8a33d"></a>
-  <a href="#tested-platforms"><img alt="Agent Java 8, 11, 17" src="https://img.shields.io/badge/agent%20Java-8%20%C2%B7%2011%20%C2%B7%2017-e8a33d?style=flat-square&labelColor=0b2239"></a>
-  <a href="#tested-platforms"><img alt="Controller Java 11 to 25" src="https://img.shields.io/badge/controller%20Java-11%20%C2%B7%2017%20%C2%B7%2021%20%C2%B7%2025-e8a33d?style=flat-square&labelColor=0b2239"></a>
-  <a href="#license"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-e8a33d?style=flat-square&labelColor=0b2239"></a>
+  <a href="https://github.com/keelinfra/agent8/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/keelinfra/agent8?style=flat-square&label=release&labelColor=0b2239&color=b06d10"></a>
+  <a href="#tested-platforms"><img alt="Agent Java 8, 11, 17" src="https://img.shields.io/badge/agent%20Java-8%20%C2%B7%2011%20%C2%B7%2017-b06d10?style=flat-square&labelColor=0b2239"></a>
+  <a href="#tested-platforms"><img alt="Controller Java 11 to 25" src="https://img.shields.io/badge/controller%20Java-11%20%C2%B7%2017%20%C2%B7%2021%20%C2%B7%2025-b06d10?style=flat-square&labelColor=0b2239"></a>
+  <a href="#license"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-b06d10?style=flat-square&labelColor=0b2239"></a>
 </p>
 
 <p align="center">
@@ -79,15 +79,15 @@ Details: [docs/how-it-works.md](docs/how-it-works.md).
 
 Linux is tested in CI on every change and weekly, against the current Jenkins LTS and weekly release. AIX, Solaris and HP-UX have been tested; they are not in CI.
 
-| Agent platform | Status |
-|---|---|
-| Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | ✅ Tested in CI on CentOS 6.10 |
-| Linux, OpenJ9 Java 8 (IBM Semeru), the JVM family of IBM Java 8 on AIX | ✅ Tested in CI; best effort (see below) |
-| Linux, HotSpot Java 11 (`agent8-java11.jar`) | ✅ Tested in CI against the current LTS |
-| Linux, HotSpot Java 17 (`agent8-java17.jar`) | ✅ Tested in CI against the current LTS |
-| AIX 7.1 / 7.2 / 7.3 with IBM Java 8 | ☑️ Tested, including aborting builds (child processes are killed); not in CI |
-| Solaris with Java 8 | ☑️ Tested (Oracle Java 8, SSH agent); not in CI |
-| HP-UX with Java 8 | ☑️ Tested (Itanium, HP Java 8, SSH agent); not in CI |
+| Agent platform | Tested | Notes |
+|---|---|---|
+| Linux, HotSpot Java 8 (Temurin), including RHEL/CentOS 6 | **in CI** | on CentOS 6.10 |
+| Linux, OpenJ9 Java 8 (IBM Semeru), the JVM family of IBM Java 8 on AIX | **in CI** | best effort (see below) |
+| Linux, HotSpot Java 11 (`agent8-java11.jar`) | **in CI** | against the current LTS |
+| Linux, HotSpot Java 17 (`agent8-java17.jar`) | **in CI** | against the current LTS |
+| AIX 7.1 / 7.2 / 7.3 with IBM Java 8 | tested, not in CI | including aborting builds (child processes are killed) |
+| Solaris with Java 8 | tested, not in CI | Oracle Java 8, SSH agent |
+| HP-UX with Java 8 | tested, not in CI | Itanium, HP Java 8, SSH agent |
 
 IBM Java and OpenJ9 (J9) are outside Jenkins' own support, so J9 support here is best effort.
 
